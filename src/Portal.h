@@ -12,19 +12,23 @@ public:
     void setLinkedPortal(Portal *portal);
     Portal *getLinkedPortal() const;
 
-    // Prepares the framebuffer and returns the view matrix for the portal pass
-    glm::mat4 beginRender(Camera &camera);
+    // Prepares the framebuffer
+    void beginRender();
     // Finishes the framebuffer pass
     void endRender(int scrWidth, int scrHeight);
+    glm::mat4 getTransformedView(glm::mat4 view);
 
     // Returns the portal plane equation (Ax + By + Cz + D = 0) in World Space
     glm::vec4 getPlaneEquation();
 
     void draw(Shader &shader) override;
 
+    void drawPrev(Shader &shader);
+
     unsigned int getTextureID() const;
 
 private:
-    std::unique_ptr<FrameBuffer> frameBuffer;
+    std::unique_ptr<FrameBuffer> frameBuffer[2];
+    int currentBuffer = 0;
     Portal *linkedPortal;
 };

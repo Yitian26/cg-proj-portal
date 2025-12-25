@@ -8,6 +8,8 @@
 #include <glad/gl.h>
 #include <glm/glm.hpp>
 
+constexpr int MAX_PORTAL_RECURSION = 3;
+
 class Renderer {
 public:
     Renderer(int width, int height);
@@ -19,8 +21,7 @@ public:
 
 private:
     void drawScene(Scene &scene, Shader &shader, const glm::mat4 &view, const glm::mat4 &projection, const glm::vec3 &viewPos);
-    void renderPortal(Scene &scene, Portal *portal, Camera &camera, const glm::mat4 &projection);
-
+    void renderPortal(Scene &scene, Portal *portal, glm::mat4 view, const glm::mat4 &projection, int recursionDepth);
     int width, height;
     std::unique_ptr<Shader> shader;
     std::unique_ptr<Shader> portalShader;

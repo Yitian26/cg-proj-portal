@@ -53,13 +53,13 @@ void Renderer::drawScene(Scene &scene, Shader &shader, const glm::mat4 &view, co
     }
 }
 
-void Renderer::renderPortal(Scene &scene, Portal *portal, Camera &camera, const glm::mat4 &projection) {
-    glm::mat4 portalView = portal->beginRender(camera);
-
-    // --- Oblique Frustum Clipping ---
+void Renderer::renderPortal(Scene &scene, Portal *portal, glm::mat4 view, const glm::mat4 &projection, int recursionDepth) {
+    if (recursionDepth <= 0) return;
+    glm::mat4 transformedCam = portal->getTransformedView(view);
+    renderPortal(scene,portal, transformedCam, projection, recursionDepth - 1);
+    portal->beginRender();
     glm::vec4 worldPlane = portal->getPlaneEquation();
-    glm::vec4 viewPlane = worldPlane * glm::inverse(portalView);
-
+    glm::vec4 viewPlane = worldPlane * glm::inverse(transformedCam);
     glm::mat4 obliqueProjection = projection;
     glm::vec4 q = glm::inverse(obliqueProjection) * glm::vec4(
         (viewPlane.x > 0.0f ? 1.0f : -1.0f),
@@ -68,15 +68,20 @@ void Renderer::renderPortal(Scene &scene, Portal *portal, Camera &camera, const 
         1.0f
     );
     glm::vec4 c = viewPlane * (2.0f / glm::dot(viewPlane, q));
-
     obliqueProjection[0][2] = c.x - obliqueProjection[0][3];
     obliqueProjection[1][2] = c.y - obliqueProjection[1][3];
     obliqueProjection[2][2] = c.z - obliqueProjection[2][3];
     obliqueProjection[3][2] = c.w - obliqueProjection[3][3];
 
-    glm::vec3 virtualCamPos = glm::vec3(glm::inverse(portalView)[3]);
-    drawScene(scene, *shader, portalView, obliqueProjection, virtualCamPos);
-
+    glm::vec3 virtualCamPos = glm::vec3(glm::inverse(transformedCam)[3]);
+    drawScene(scene, *shader, transformedCam, obliqueProjection, virtualCamPos);
+    if (recursionDepth > 1) {
+        portalShader->use();
+        portalShader->setMat4("projection", obliqueProjection);
+        portalShader->setMat4("view", transformedCam);
+        portal->drawPrev(*portalShader);
+        shader->use();
+    }
     portal->endRender(width, height);
 }
 
@@ -85,8 +90,8 @@ void Renderer::render(Scene &scene, Camera &camera) {
     glm::mat4 view = camera.GetViewMatrix();
 
     // 1. Render Portal Views
-    if (scene.portalA) renderPortal(scene, scene.portalA.get(), camera, projection);
-    if (scene.portalB) renderPortal(scene, scene.portalB.get(), camera, projection);
+    if (scene.portalA) renderPortal(scene, scene.portalA.get(), view, projection, MAX_PORTAL_RECURSION);
+    if (scene.portalB) renderPortal(scene, scene.portalB.get(), view, projection, MAX_PORTAL_RECURSION);
 
     // 2. Render Main Pass
     glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
@@ -98,7 +103,6 @@ void Renderer::render(Scene &scene, Camera &camera) {
     portalShader->use();
     portalShader->setMat4("projection", projection);
     portalShader->setMat4("view", view);
-
     if (scene.portalA) scene.portalA->draw(*portalShader);
     if (scene.portalB) scene.portalB->draw(*portalShader);
 

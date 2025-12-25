@@ -2,7 +2,8 @@
 
 Portal::Portal(Model *model, int width, int height, glm::vec3 pos, glm::vec3 rot, glm::vec3 scale)
     : GameObject(model, pos, rot, scale), linkedPortal(nullptr) {
-    frameBuffer = std::make_unique<FrameBuffer>(width, height);
+    frameBuffer[0] = std::make_unique<FrameBuffer>(width, height);
+    frameBuffer[1] = std::make_unique<FrameBuffer>(width, height);
 }
 
 void Portal::setLinkedPortal(Portal *portal) {
@@ -13,14 +14,15 @@ Portal *Portal::getLinkedPortal() const {
     return linkedPortal;
 }
 
-glm::mat4 Portal::beginRender(Camera &camera) {
-    if (!linkedPortal) return glm::mat4(1.0f);
-
-    frameBuffer->Bind();
+void Portal::beginRender() {
+    currentBuffer = (currentBuffer + 1) % 2;
+    frameBuffer[currentBuffer]->Bind();
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
 
-    // Calculate Portal View Matrix
+glm::mat4 Portal::getTransformedView(glm::mat4 view) {
+    if (!linkedPortal) return view;
     // 1. Get Model Matrices
     glm::mat4 myModel = glm::mat4(1.0f);
     myModel = glm::translate(myModel, position);
@@ -36,7 +38,6 @@ glm::mat4 Portal::beginRender(Camera &camera) {
 
     // 2. Calculate Relative Transform (Camera -> Me)
 
-    glm::mat4 view = camera.GetViewMatrix();
     glm::mat4 camTransform = glm::inverse(view);
 
     // Transformation from this portal's local space to the other portal's local space
@@ -53,7 +54,7 @@ glm::mat4 Portal::beginRender(Camera &camera) {
 }
 
 void Portal::endRender(int scrWidth, int scrHeight) {
-    frameBuffer->Unbind();
+    frameBuffer[currentBuffer]->Unbind();
     glViewport(0, 0, scrWidth, scrHeight);
 }
 
@@ -78,7 +79,17 @@ glm::vec4 Portal::getPlaneEquation() {
 
 void Portal::draw(Shader &shader) {
     glActiveTexture(GL_TEXTURE10);
-    glBindTexture(GL_TEXTURE_2D, frameBuffer->GetTextureID());
+    glBindTexture(GL_TEXTURE_2D, frameBuffer[currentBuffer]->GetTextureID());
+    shader.setInt("reflectionTexture", 10);
+
+    GameObject::draw(shader);
+
+    glActiveTexture(GL_TEXTURE0);
+}
+
+void Portal::drawPrev(Shader &shader) {
+    glActiveTexture(GL_TEXTURE10);
+    glBindTexture(GL_TEXTURE_2D, frameBuffer[(currentBuffer+1) % 2]->GetTextureID());
     shader.setInt("reflectionTexture", 10);
 
     GameObject::draw(shader);
@@ -87,5 +98,5 @@ void Portal::draw(Shader &shader) {
 }
 
 unsigned int Portal::getTextureID() const {
-    return frameBuffer->GetTextureID();
+    return frameBuffer[(currentBuffer+1) % 2]->GetTextureID();
 }

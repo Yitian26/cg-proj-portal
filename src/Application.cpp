@@ -83,8 +83,9 @@ bool Application::initialize() {
 
     // Portal B on Left Wall
     scene->portalB = std::make_unique<Portal>(cubeModelPtr, width, height);
-    scene->portalB->position = glm::vec3(-9.8f, 1.0f, 0.0f);
-    scene->portalB->rotation = glm::vec3(0.0f, 90.0f, 0.0f);
+    // scene->portalB->position = glm::vec3(-9.8f, 1.0f, 0.0f);
+    scene->portalB->position = glm::vec3(0.0f, 1.0f, 9.8f);
+    scene->portalB->rotation = glm::vec3(0.0f, 180.0f, 0.0f);
     scene->portalB->scale = glm::vec3(1.8f, 2.7f, 0.005f);
 
     // Link Portals
@@ -109,9 +110,15 @@ bool Application::initialize() {
     leftWall->scale = glm::vec3(0.1f, 5.0f, 10.0f);
     scene->objects.push_back(std::move(leftWall));
 
+    // 3. Back Wall
+    auto frontWall = std::make_unique<GameObject>(cubeModelPtr);
+    frontWall->position = glm::vec3(0.0f, 3.0f, 10.0f);
+    frontWall->scale = glm::vec3(10.0f, 5.0f, 0.1f);
+    scene->objects.push_back(std::move(frontWall));
+
     // 5. Center Cube
     auto centerCube = std::make_unique<GameObject>(portalCubeModelPtr);
-    centerCube->position = glm::vec3(-5.0f, 0.0f, -5.0f);
+    centerCube->position = glm::vec3(0.0f, 0.0f, 0.0f);
     centerCube->scale = glm::vec3(0.1f);
     scene->objects.push_back(std::move(centerCube));
     // 6. Portal Gun
