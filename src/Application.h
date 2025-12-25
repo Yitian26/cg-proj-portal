@@ -11,6 +11,7 @@
 #include "Scene.h"
 #include "Renderer.h"
 #include <vector>
+#include "InputManager.h"
 
 class Application {
 public:
@@ -28,7 +29,7 @@ private:
     static void mouse_callback(GLFWwindow *window, double xpos, double ypos);
     static void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
     static void mouse_button_callback(GLFWwindow *window, int button, int action, int mods);
-    
+
     int width, height;
     std::string title;
     GLFWwindow *window;
@@ -39,4 +40,7 @@ private:
 
     // Camera
     static Camera camera;
+
+    // Input
+    InputManager input;
 };

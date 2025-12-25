@@ -44,8 +44,8 @@ void Renderer::drawScene(Scene &scene, Shader &shader, const glm::mat4 &view, co
 
     shader.setFloat("material.shininess", 32.0f);
 
-    for (auto &obj : scene.objects) {
-        obj->draw(shader);
+    for (auto &pair : scene.objects) {
+        pair.second->draw(shader);
     }
 
     if (scene.skybox) {

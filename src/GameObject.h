@@ -7,6 +7,10 @@
 #include "Shader.h"
 #include "Camera.h"
 
+// Forward declaration to avoid circular dependency if PhysicsSystem includes GameObject
+struct RigidBody;
+struct AABB;
+
 class GameObject {
 public:
     // Transform attributes
@@ -17,11 +21,13 @@ public:
     // Model reference (does not own the model)
     Model *model;
 
-    GameObject(Model *model, glm::vec3 pos = glm::vec3(0.0f), glm::vec3 rot = glm::vec3(0.0f), glm::vec3 scale = glm::vec3(1.0f))
-        : model(model), position(pos), rotation(rot), scale(scale) {
-    }
+    // Physics components (owned by GameObject for now, but managed by PhysicsSystem)
+    std::unique_ptr<RigidBody> rigidBody;
+    std::unique_ptr<AABB> collider;
 
-    virtual ~GameObject() = default;
+    GameObject(Model *model, glm::vec3 pos = glm::vec3(0.0f), glm::vec3 rot = glm::vec3(0.0f), glm::vec3 scale = glm::vec3(1.0f));
+
+    virtual ~GameObject();
 
     // Core logic update
     virtual void update(float dt, const Camera &camera) {
