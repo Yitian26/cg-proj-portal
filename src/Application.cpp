@@ -1,4 +1,5 @@
 #include "Application.h"
+#include "PortalGun.h"
 #include <iostream>
 
 Camera Application::camera(glm::vec3(0.0f, 0.0f, 3.0f));
@@ -10,7 +11,6 @@ float lastFrame = 0.0f;
 
 Application::Application(int width, int height, const std::string &title)
     : width(width), height(height), title(title), window(nullptr) {
-    lightPos = glm::vec3(1.2f, 1.0f, 2.0f);
 }
 
 Application::~Application() {
@@ -41,6 +41,7 @@ bool Application::initialize() {
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
 
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
@@ -55,10 +56,12 @@ bool Application::initialize() {
 
     glEnable(GL_DEPTH_TEST);
 
-    // build and compile shaders
-    shader = std::make_unique<Shader>("shaders/default.vert", "shaders/default.frag");
-    portalShader = std::make_unique<Shader>("shaders/screen.vert", "shaders/screen.frag");
+    // --- Initialize Core Systems ---
+    scene = std::make_unique<Scene>();
+    renderer = std::make_unique<Renderer>(width, height);
+    renderer->initialize();
 
+    scene->lightPos = glm::vec3(5.0f, 5.0f, 5.0f);
     // --- Load Resources ---
     auto cubeModel = std::make_unique<Model>("resources/obj/wall/cube.obj");
     auto portal_cubeModel = std::make_unique<Model>("resources/obj/portal_cube/portal_cube.obj");
@@ -69,55 +72,54 @@ bool Application::initialize() {
     Model *portalCubeModelPtr = portal_cubeModel.get();
     Model *portalGunModelPtr = portal_gunModel.get();
 
-    modelResources.push_back(std::move(cubeModel));
-    modelResources.push_back(std::move(portal_cubeModel));
-    modelResources.push_back(std::move(portal_gunModel));
+    scene->modelResources.push_back(std::move(cubeModel));
+    scene->modelResources.push_back(std::move(portal_cubeModel));
+    scene->modelResources.push_back(std::move(portal_gunModel));
 
     // Portal A on Back Wall
-    portalA = std::make_unique<Portal>(cubeModelPtr, width, height);
-    portalA->position = glm::vec3(0.0f, 1.5f, -9.5f);
-    portalA->scale = glm::vec3(2.0f, 3.0f, 0.1f);
+    scene->portalA = std::make_unique<Portal>(cubeModelPtr, width, height);
+    scene->portalA->position = glm::vec3(0.0f, 1.0f, -9.8f);
+    scene->portalA->scale = glm::vec3(1.8f, 2.7f, 0.005f);
 
     // Portal B on Left Wall
-    portalB = std::make_unique<Portal>(cubeModelPtr, width, height);
-    portalB->position = glm::vec3(-9.5f, 1.5f, 0.0f);
-    portalB->rotation = glm::vec3(0.0f, 90.0f, 0.0f);
-    portalB->scale = glm::vec3(2.0f, 3.0f, 0.1f);
+    scene->portalB = std::make_unique<Portal>(cubeModelPtr, width, height);
+    scene->portalB->position = glm::vec3(-9.8f, 1.0f, 0.0f);
+    scene->portalB->rotation = glm::vec3(0.0f, 90.0f, 0.0f);
+    scene->portalB->scale = glm::vec3(1.8f, 2.7f, 0.005f);
 
     // Link Portals
-    portalA->setLinkedPortal(portalB.get());
-    portalB->setLinkedPortal(portalA.get());
+    scene->portalA->setLinkedPortal(scene->portalB.get());
+    scene->portalB->setLinkedPortal(scene->portalA.get());
 
     // 2. Floor (Ground)
     auto floor = std::make_unique<GameObject>(cubeModelPtr);
     floor->position = glm::vec3(0.0f, -2.0f, 0.0f);
     floor->scale = glm::vec3(10.0f, 0.1f, 10.0f);
-    sceneObjects.push_back(std::move(floor));
+    scene->objects.push_back(std::move(floor));
 
     // 3. Back Wall
     auto backWall = std::make_unique<GameObject>(cubeModelPtr);
     backWall->position = glm::vec3(0.0f, 3.0f, -10.0f);
     backWall->scale = glm::vec3(10.0f, 5.0f, 0.1f);
-    sceneObjects.push_back(std::move(backWall));
+    scene->objects.push_back(std::move(backWall));
 
     // 4. Left Wall
     auto leftWall = std::make_unique<GameObject>(cubeModelPtr);
     leftWall->position = glm::vec3(-10.0f, 3.0f, 0.0f);
     leftWall->scale = glm::vec3(0.1f, 5.0f, 10.0f);
-    sceneObjects.push_back(std::move(leftWall));
+    scene->objects.push_back(std::move(leftWall));
 
     // 5. Center Cube
     auto centerCube = std::make_unique<GameObject>(portalCubeModelPtr);
     centerCube->position = glm::vec3(-5.0f, 0.0f, -5.0f);
     centerCube->scale = glm::vec3(0.1f);
-    sceneObjects.push_back(std::move(centerCube));
-
+    scene->objects.push_back(std::move(centerCube));
     // 6. Portal Gun
-    auto portalGun = std::make_unique<GameObject>(portalGunModelPtr);
-    portalGun->position = glm::vec3(0.5f, -0.5f, -1.0f);
-    portalGun->scale = glm::vec3(0.05f);
-    sceneObjects.push_back(std::move(portalGun));
+    scene->portalGun = std::make_unique<PortalGun>(portalGunModelPtr);
+    scene->portalGun->position = glm::vec3(0.5f, -0.5f, -1.0f);
+    scene->portalGun->scale = glm::vec3(0.05f);
 
+    // Initialize Skybox
     // Initialize Skybox
     std::vector<std::string> faces = {
         "resources/skybox/right.jpg",
@@ -127,7 +129,7 @@ bool Application::initialize() {
         "resources/skybox/front.jpg",
         "resources/skybox/back.jpg"
     };
-    skybox = std::make_unique<Skybox>(faces);
+    scene->skybox = std::make_unique<Skybox>(faces);
 
     return true;
 }
@@ -143,12 +145,10 @@ void Application::run() {
         processInput(deltaTime);
 
         // --- Logic Update ---
-        for (auto &obj : sceneObjects) {
-            obj->update(deltaTime);
-        }
+        scene->update(deltaTime, camera);
 
         // render
-        render(deltaTime);
+        renderer->render(*scene, camera);
 
         // glfw: swap buffers and poll IO events
         glfwSwapBuffers(window);
@@ -174,103 +174,15 @@ void Application::processInput(float deltaTime) {
         camera.ProcessKeyboard(RIGHT, deltaTime);
 }
 
-void Application::drawScene(Shader &shader, const glm::mat4 &view, const glm::mat4 &projection) {
-    shader.use();
-    shader.setMat4("projection", projection);
-    shader.setMat4("view", view);
-    shader.setVec3("viewPos", camera.Position);
-
-    // Directional light
-    shader.setVec3("dirLight.direction", -0.2f, -1.0f, -0.3f);
-    shader.setVec3("dirLight.ambient", 0.3f, 0.3f, 0.3f);
-    shader.setVec3("dirLight.diffuse", 0.4f, 0.4f, 0.4f);
-    shader.setVec3("dirLight.specular", 0.5f, 0.5f, 0.5f);
-
-    // Point light
-    shader.setVec3("pointLights[0].position", lightPos);
-    shader.setVec3("pointLights[0].ambient", 0.2f, 0.2f, 0.2f);
-    shader.setVec3("pointLights[0].diffuse", 0.8f, 0.8f, 0.8f);
-    shader.setVec3("pointLights[0].specular", 1.0f, 1.0f, 1.0f);
-    shader.setFloat("pointLights[0].constant", 1.0f);
-    shader.setFloat("pointLights[0].linear", 0.09f);
-    shader.setFloat("pointLights[0].quadratic", 0.032f);
-
-    shader.setFloat("material.shininess", 32.0f);
-
-    for (auto &obj : sceneObjects) {
-        obj->draw(shader);
-    }
-
-    skybox->draw(view, projection);
-}
-
-void Application::renderPortal(Portal *portal, const glm::mat4 &view, const glm::mat4 &projection) {
-    glm::mat4 portalView = portal->beginRender(camera);
-
-    // --- Oblique Frustum Clipping ---
-    // 1. Get Linked Portal Plane in World Space (The plane we are looking out of)
-    glm::vec4 worldPlane = portal->getPlaneEquation();
-
-    // 2. Transform Plane to Camera Space (View Space)
-    glm::vec4 viewPlane = worldPlane * glm::inverse(portalView);
-
-    // 3. Modify Projection Matrix
-    glm::mat4 obliqueProjection = projection;
-    glm::vec4 q = glm::inverse(obliqueProjection) * glm::vec4(
-        (viewPlane.x > 0.0f ? 1.0f : -1.0f),
-        (viewPlane.y > 0.0f ? 1.0f : -1.0f),
-        1.0f,
-        1.0f
-    );
-    glm::vec4 c = viewPlane * (2.0f / glm::dot(viewPlane, q));
-
-    obliqueProjection[0][2] = c.x - obliqueProjection[0][3];
-    obliqueProjection[1][2] = c.y - obliqueProjection[1][3];
-    obliqueProjection[2][2] = c.z - obliqueProjection[2][3];
-    obliqueProjection[3][2] = c.w - obliqueProjection[3][3];
-
-    // Draw scene from portal's perspective
-
-    drawScene(*shader, portalView, obliqueProjection);
-
-    portal->endRender(width, height);
-}
-
-void Application::render(float deltaTime) {
-    glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)width / (float)height, 0.1f, 100.0f);
-    glm::mat4 view = camera.GetViewMatrix();
-
-    // 1. Render Portal A's View (What we see inside Portal A)
-    renderPortal(portalA.get(), view, projection);
-
-    // 2. Render Portal B's View (What we see inside Portal B)
-    renderPortal(portalB.get(), view, projection);
-
-    // 3. Render Main Pass
-    {
-        glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        drawScene(*shader, view, projection);
-
-        portalShader->use();
-        portalShader->setMat4("projection", projection);
-        portalShader->setMat4("view", view);
-
-        // Draw Portal A
-        portalA->draw(*portalShader);
-
-        // Draw Portal B
-        portalB->draw(*portalShader);
-    }
-}
-
 void Application::framebuffer_size_callback(GLFWwindow *window, int width, int height) {
     glViewport(0, 0, width, height);
     Application *app = static_cast<Application *>(glfwGetWindowUserPointer(window));
     if (app) {
         app->width = width;
         app->height = height;
+        if (app->renderer) {
+            app->renderer->resize(width, height);
+        }
     }
 }
 
@@ -295,4 +207,13 @@ void Application::mouse_callback(GLFWwindow *window, double xposIn, double yposI
 
 void Application::scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
     camera.ProcessMouseScroll(static_cast<float>(yoffset));
+}
+
+void Application::mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {
+    Application *app = static_cast<Application *>(glfwGetWindowUserPointer(window));
+    if (app && button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        if (app->scene && app->scene->portalGun) {
+            app->scene->portalGun->fire();
+        }
+    }
 }

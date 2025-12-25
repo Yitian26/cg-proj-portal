@@ -5,6 +5,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include "Model.h"
 #include "Shader.h"
+#include "Camera.h"
 
 class GameObject {
 public:
@@ -23,7 +24,7 @@ public:
     virtual ~GameObject() = default;
 
     // Core logic update
-    virtual void update(float dt) {
+    virtual void update(float dt, const Camera &camera) {
         // Default object has no logic
     }
 
