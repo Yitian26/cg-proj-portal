@@ -100,6 +100,7 @@ bool Application::initialize() {
     auto floor = std::make_unique<GameObject>(scene->modelResources["cube"].get());
     floor->position = glm::vec3(0.0f, -2.0f, 0.0f);
     floor->scale = glm::vec3(10.0f, 0.1f, 10.0f);
+    floor->canOpenPortal = true;
     scene->addPhysics(floor.get(), true);
     scene->addObject("floor", std::move(floor));
 
@@ -107,6 +108,7 @@ bool Application::initialize() {
     auto ceil = std::make_unique<GameObject>(scene->modelResources["cube"].get());
     ceil->position = glm::vec3(5.0f, 5.0f, 5.0f);
     ceil->scale = glm::vec3(5.0f, 0.1f, 5.0f);
+    ceil->canOpenPortal = true;
     scene->addPhysics(ceil.get(), true);
     scene->addObject("ceiling", std::move(ceil));
 
@@ -115,6 +117,7 @@ bool Application::initialize() {
     backWall->position = glm::vec3(0.0f, 2.0f, -10.0f);
     backWall->scale = glm::vec3(10.0f, 5.0f, 0.1f);
     backWall->rotation = glm::vec3(-25.0f, 0.0f, 0.0f);
+    backWall->canOpenPortal = true;
     scene->addPhysics(backWall.get(), true);
     scene->addObject("backWall", std::move(backWall));
 
@@ -122,6 +125,7 @@ bool Application::initialize() {
     auto leftWall = std::make_unique<GameObject>(scene->modelResources["cube"].get());
     leftWall->position = glm::vec3(-10.0f, 3.0f, 0.0f);
     leftWall->scale = glm::vec3(0.1f, 5.0f, 10.0f);
+    leftWall->canOpenPortal = true;
     scene->addPhysics(leftWall.get(), true);
     scene->addObject("leftWall", std::move(leftWall));
 
@@ -129,6 +133,7 @@ bool Application::initialize() {
     auto frontWall = std::make_unique<GameObject>(scene->modelResources["cube"].get());
     frontWall->position = glm::vec3(0.0f, 3.0f, 10.0f);
     frontWall->scale = glm::vec3(10.0f, 5.0f, 0.1f);
+    frontWall->canOpenPortal = true;
     scene->addPhysics(frontWall.get(), true);
     scene->addObject("frontWall", std::move(frontWall));
 

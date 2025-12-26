@@ -147,6 +147,9 @@ void Portal::updateFramesTransform() {
 
 void Portal::checkRaycast(RaycastHit result) {
     if (result.hit) {
+        if (!result.object->canOpenPortal) {
+            return;
+        }
         if (onObject) {
             onObject->setCollisionMask(COLLISION_MASK_DEFAULT);
         }

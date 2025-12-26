@@ -145,8 +145,8 @@ void Player::update(float dt, PhysicsSystem *physicsSystem) {
         }
 
         if (isGrabbing && grabbedObject) {
-            glm::vec3 targetPos = position + camera.Front * 1.5f + glm::vec3(0.0f, 0.5f, 0.0f);
-            if (glm::length(targetPos - grabbedObject->position) > 2.5f) {
+            glm::vec3 targetPos = position + camera.Front * 2.0f + camera.Right * 0.5f + glm::vec3(0.0f, 0.3f, 0.0f);
+            if (glm::length(targetPos - grabbedObject->position) > 3.0f) {
                 // Too far, release
                 isGrabbing = false;
             } else {

@@ -15,6 +15,7 @@ class GameObject {
 public:
     std::string name;
     bool isTeleportable = false;
+    bool canOpenPortal = false;
     // Transform attributes
     glm::vec3 position;
     glm::vec3 rotation; // Euler angles in degrees
