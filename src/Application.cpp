@@ -136,9 +136,9 @@ bool Application::initialize() {
     auto fallingCube = std::make_unique<GameObject>(scene->modelResources["portal_cube"].get());
     fallingCube->position = glm::vec3(0.0f, 30.0f, -5.0f);
     // fallingCube->rotation = glm::vec3(25.0f, 25.0f, 0.0f);
-    fallingCube->setScaleToSizeX(1.0f);
+    fallingCube->setScaleToSizeX(0.7f);
     fallingCube->isTeleportable = true;
-    scene->addPhysics(fallingCube.get(), false, 1.0f, 1.0f, 0.0f);
+    scene->addPhysics(fallingCube.get(), false, 1.0f, 0.2f, 0.5f);
     scene->addObject("fallingCube", std::move(fallingCube));
 
     // 7. Portal Gun
@@ -235,6 +235,19 @@ void Application::processInput(float deltaTime) {
         scene->player->position = glm::vec3(0.0f, 20.0f, 0.0f);
         scene->player->rigidBody->velocity = glm::vec3(0.0f);
         scene->player->rigidBody->clearForces();
+    }
+
+    if (input.isKeyPressed(GLFW_KEY_E)) {
+        if (scene->player->isGrabbing) {
+            // Release
+            scene->player->isGrabbing = false;
+        } else {
+            auto result = scene->physicsSystem->raycast(cam.Position, cam.Front, 5.0f);
+            if (result.hit && result.object && result.object->isTeleportable) {
+                scene->player->isGrabbing = true;
+                scene->player->grabbedObject = result.object;
+            }
+        }
     }
 
     if (input.isMousePressed(GLFW_MOUSE_BUTTON_LEFT)) {

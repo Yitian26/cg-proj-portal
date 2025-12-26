@@ -27,6 +27,20 @@ void PhysicsSystem::removeObject(GameObject *obj) {
 }
 
 void PhysicsSystem::update(float dt) {
+    // Ground detection
+    for (auto &obj : physicsObjects) {
+        if (obj.rigidBody && !obj.rigidBody->isStatic && obj.collider) {
+            // Raycast downward to detect ground
+            glm::vec3 rayOrigin = obj.gameObject->position;
+            glm::vec3 rayDirection = glm::vec3(0.0f, -1.0f, 0.0f); // Down
+            float rayLength = obj.collider->max.y - obj.collider->min.y + 0.1f; // Slightly more than collider height
+            RaycastHit hit = raycast(rayOrigin, rayDirection, rayLength);
+            obj.rigidBody->isOnGround = hit.hit;
+        } else {
+            obj.rigidBody->isOnGround = false;
+        }
+    }
+
     // 1. Integration
     for (auto &obj : physicsObjects) {
         if (obj.rigidBody && !obj.rigidBody->isStatic) {
@@ -82,12 +96,13 @@ void PhysicsSystem::integrate(PhysicsObject &obj, float dt) {
     // v = v0 + at
     rb->velocity += acc * dt;
 
-    // Apply Damping/Friction (Simple linear drag)
-    rb->velocity *= (1.0f - dt * 0.1f);
+    // Apply Damping/Friction
+    float dampingFactor = rb->isOnGround ? rb->friction : 0.1f; // Ground friction vs air resistance
+    rb->velocity *= (1.0f - dt * dampingFactor);
 
     rb->velocity.y = std::max(rb->velocity.y, -40.0f);
-        
-        // x = x0 + vt
+
+    // x = x0 + vt
     go->position += rb->velocity * dt;
 
     // Clear forces for next frame

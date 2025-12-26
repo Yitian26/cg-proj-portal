@@ -15,14 +15,13 @@ Player::Player(glm::vec3 startPos)
     rigidBody->isStatic = false;
     rigidBody->collisionMask = COLLISION_MASK_DEFAULT;
 
-    // Initialize collider (local space relative to position? No, let's keep it simple: World Space AABB updated every frame)
-    // Center is position + height/2
-    glm::vec3 min = position + glm::vec3(-radius, 0.0f, -radius);
-    glm::vec3 max = position + glm::vec3(radius, height, radius);
+    // Initialize collider (centered on position)
+    glm::vec3 min = position + glm::vec3(-radius, -height *  0.5f, -radius);
+    glm::vec3 max = position + glm::vec3(radius, height * 0.5f, radius);
     collider = std::make_unique<AABB>(min, max);
 
-    // Set correct camera height based on member variable
-    camera.Position = position + glm::vec3(0.0f, height * 0.9f, 0.0f);
+    // Set correct camera height based on member variable (eyes at center + 0.4 * height)
+    camera.Position = position + glm::vec3(0.0f, height * 0.4f, 0.0f);
 }
 
 void Player::processInput(const InputManager &input, float dt) {
@@ -45,7 +44,7 @@ void Player::processInput(const InputManager &input, float dt) {
 
     if (glm::length(targetVel) > 0.0f) {
         targetVel = glm::normalize(targetVel) * moveSpeed;
-    } else if (!isGrounded){
+    } else if (!isGrounded) {
         // No input: maintain current horizontal velocity for momentum
         targetVel.x = rigidBody->velocity.x;
         targetVel.z = rigidBody->velocity.z;
@@ -90,9 +89,9 @@ void Player::update(float dt, PhysicsSystem *physicsSystem) {
     // Move Y first (handle gravity/ground)
     {
         position.y += displacement.y;
-        // Update collider
-        collider->min = position + glm::vec3(-radius, 0.0f, -radius);
-        collider->max = position + glm::vec3(radius, height, radius);
+        // Update collider (centered on position)
+        collider->min = position + glm::vec3(-radius, -height * 0.5f, -radius);
+        collider->max = position + glm::vec3(radius, height * 0.5f, radius);
 
         // Check collision
         // We need a way to query the physics system for overlaps with this AABB
@@ -134,8 +133,8 @@ void Player::update(float dt, PhysicsSystem *physicsSystem) {
         glm::vec3 horizontalDisp = glm::vec3(displacement.x, 0.0f, displacement.z);
         position += horizontalDisp;
 
-        collider->min = position + glm::vec3(-radius, 0.0f, -radius);
-        collider->max = position + glm::vec3(radius, height, radius);
+        collider->min = position + glm::vec3(-radius, -height * 0.5f, -radius);
+        collider->max = position + glm::vec3(radius, height * 0.5f, radius);
 
         if (rigidBody->isCollisionEnabled) {
             glm::vec3 correction;
@@ -144,8 +143,20 @@ void Player::update(float dt, PhysicsSystem *physicsSystem) {
                 // No need to kill velocity, just slide (position is already corrected)
             }
         }
+
+        if (isGrabbing && grabbedObject) {
+            glm::vec3 targetPos = position + camera.Front * 1.5f + glm::vec3(0.0f, 0.5f, 0.0f);
+            if (glm::length(targetPos - grabbedObject->position) > 2.5f) {
+                // Too far, release
+                isGrabbing = false;
+            } else {
+                glm::vec3 springForce = (targetPos - grabbedObject->position) * 30.0f;
+                glm::vec3 dumplingForce = -grabbedObject->rigidBody->velocity * 5.0f;
+                grabbedObject->rigidBody->addForce(springForce + dumplingForce);
+            }
+        }
     }
 
     // Sync Camera
-    camera.Position = position + glm::vec3(0.0f, height * 0.9f, 0.0f); // Eyes near top
+    camera.Position = position + glm::vec3(0.0f, height * 0.4f, 0.0f); // Eyes at center + 0.4*height
 }

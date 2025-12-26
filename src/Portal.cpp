@@ -75,7 +75,7 @@ void Portal::init(Scene *scene) {
             player->camera.Up = glm::normalize(glm::cross(player->camera.Right, player->camera.Front));
 
             // Also move camera position to follow player properly
-            player->camera.Position = player->position + glm::vec3(0.0f, player->height * 0.5f * 0.9f, 0.0f);
+            player->camera.Position = player->position + glm::vec3(0.0f, player->height * 0.4f, 0.0f);
         }
         };
     scene->addTrigger(name + "TeleportTrigger", std::unique_ptr<Trigger>(teleportTrigger));
@@ -126,22 +126,22 @@ void Portal::updateFramesTransform() {
     // Top
     if (frames[0]) {
         frames[0]->rotation = rotation;
-        frames[0]->position = position + axes[1] * (halfH + 0.18f - thickness * 0.5f) - axes[2] * (depth * 2.0f - 0.1f);
+        frames[0]->position = position + axes[1] * (halfH + 0.18f - thickness * 0.5f) - axes[2] * (depth * 2.0f - 0.05f);
     }
     // Bottom
     if (frames[1]) {
         frames[1]->rotation = rotation;
-        frames[1]->position = position + axes[1] * (-halfH - 0.18f + thickness * 0.5f) - axes[2] * (depth * 2.0f - 0.1f);
+        frames[1]->position = position + axes[1] * (-halfH - 0.18f + thickness * 0.5f) - axes[2] * (depth * 2.0f - 0.05f);
     }
     // Left
     if (frames[2]) {
         frames[2]->rotation = rotation;
-        frames[2]->position = position + axes[0] * (-halfW - 0.18f + thickness * 0.5f) - axes[2] * (depth * 2.0f - 0.1f);
+        frames[2]->position = position + axes[0] * (-halfW - 0.18f + thickness * 0.5f) - axes[2] * (depth * 2.0f - 0.05f);
     }
     // Right
     if (frames[3]) {
         frames[3]->rotation = rotation;
-        frames[3]->position = position + axes[0] * (halfW + 0.18f - thickness * 0.5f) - axes[2] * (depth * 2.0f - 0.1f);
+        frames[3]->position = position + axes[0] * (halfW + 0.18f - thickness * 0.5f) - axes[2] * (depth * 2.0f - 0.05f);
     }
 }
 
@@ -152,8 +152,8 @@ void Portal::checkRaycast(RaycastHit result) {
         }
         result.object->setCollisionMask(COLLISION_MASK_PORTALON);
         onObject = result.object;
-        std::cout << "Raycast hit object at distance: " << result.distance << std::endl;
-        position = result.point + result.normal * 0.03f;
+        // std::cout << "Raycast hit object at distance: " << result.distance << std::endl;
+        position = result.point + result.normal * 0.05f;
         // Align portal normal (0,0,1) to hit normal
         float ny = glm::clamp(result.normal.y, -1.0f, 1.0f);
         float pitch = -glm::degrees(std::asin(ny));

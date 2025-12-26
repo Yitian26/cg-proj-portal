@@ -50,6 +50,7 @@ struct RigidBody {
     float friction = 0.5f;
     float restitution = 0.2f; // Bounciness
     uint32_t collisionMask = 0xFFFFFFFF; // Bitmask for collision filtering
+    bool isOnGround = false;
 
     void addForce(const glm::vec3 &f) {
         force += f;

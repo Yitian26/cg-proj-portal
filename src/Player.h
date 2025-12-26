@@ -18,6 +18,8 @@ public:
     // Physics properties
     // velocity is now in rigidBody->velocity
     bool isGrounded;
+    bool isGrabbing = false;
+    GameObject *grabbedObject = nullptr;
     // collisionMask is now in rigidBody->collisionMask
 
     // Configuration
