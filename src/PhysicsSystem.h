@@ -6,8 +6,9 @@
 #include <functional>
 
 constexpr uint32_t COLLISION_MASK_DEFAULT = 0xF;
+constexpr uint32_t COLLISION_MASK_PORTALFRAME = 0xF0;
 constexpr uint32_t COLLISION_MASK_PORTALON = 0x1;
-constexpr uint32_t COLLISION_MASK_NEARPORTAL = 0x2;
+constexpr uint32_t COLLISION_MASK_NEARPORTAL = 0xF2;
 
 // Forward declaration
 class GameObject;
@@ -45,6 +46,7 @@ struct RigidBody {
     float mass = 1.0f;
     bool useGravity = true;
     bool isStatic = false;
+    bool isCollisionEnabled = true; // Enable/Disable collision response
     float friction = 0.5f;
     float restitution = 0.2f; // Bounciness
     uint32_t collisionMask = 0xFFFFFFFF; // Bitmask for collision filtering
@@ -89,7 +91,7 @@ public:
     // Character Controller Helper
     // Checks if the given AABB overlaps with any static physics object.
     // Returns true if collision found, and sets correction vector to resolve it.
-    bool checkPlayerCollision(const AABB &playerAABB, glm::vec3 &outCorrection, uint32_t playerMask = 0xFFFFFFFF);
+    bool checkPlayerCollision(const AABB &playerAABB, glm::vec3 &outCorrection, uint32_t playerMask = COLLISION_MASK_DEFAULT);
 
     void update(float dt);
 

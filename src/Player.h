@@ -5,7 +5,7 @@
 #include "PhysicsSystem.h"
 #include "InputManager.h"
 
-class Player {
+class Player : public GameObject {
 public:
     Player(glm::vec3 position);
     ~Player() = default;
@@ -16,9 +16,9 @@ public:
     Camera camera;
 
     // Physics properties
-    glm::vec3 velocity;
+    // velocity is now in rigidBody->velocity
     bool isGrounded;
-    uint32_t collisionMask = COLLISION_MASK_DEFAULT;
+    // collisionMask is now in rigidBody->collisionMask
 
     // Configuration
     float moveSpeed = 5.0f;
@@ -27,16 +27,17 @@ public:
     float height = 2.0f;
     float radius = 0.3f; // Approximate width
 
-    // We use a simple AABB for the player for now
-    std::unique_ptr<AABB> collider;
+    // collider is now in GameObject::collider
 
     // Helper to get current position (feet)
     glm::vec3 getPosition() const { return position; }
     void setPosition(const glm::vec3 &pos) { position = pos; }
-    void setCollisionMask(uint32_t mask) { collisionMask = mask; }
+    // setCollisionMask is inherited from GameObject
+    // setCollisionEnabled is inherited from GameObject
 
 private:
-    glm::vec3 position; // Feet position
+    // position is inherited from GameObject
+    // isCollisionEnabled is in rigidBody
 
     void checkGrounded(PhysicsSystem *physicsSystem);
     void resolveCollisions(PhysicsSystem *physicsSystem, glm::vec3 &proposedVelocity, float dt);

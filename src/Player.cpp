@@ -3,10 +3,18 @@
 #include <algorithm>
 
 Player::Player(glm::vec3 startPos)
-    : position(startPos),
+    : GameObject(nullptr, startPos), // Initialize GameObject
     camera(startPos), // Default, will be updated
-    velocity(0.0f),
     isGrounded(false) {
+
+    isTeleportable = true;
+    // Initialize RigidBody
+    rigidBody = std::make_unique<RigidBody>();
+    rigidBody->velocity = glm::vec3(0.0f);
+    rigidBody->useGravity = false; // We handle gravity manually in update()
+    rigidBody->isStatic = false;
+    rigidBody->collisionMask = COLLISION_MASK_DEFAULT;
+
     // Initialize collider (local space relative to position? No, let's keep it simple: World Space AABB updated every frame)
     // Center is position + height/2
     glm::vec3 min = position + glm::vec3(-radius, 0.0f, -radius);
@@ -43,25 +51,25 @@ void Player::processInput(const InputManager &input, float dt) {
     float accel = 10.0f;
     if (!isGrounded) accel = 2.0f; // Less control in air
 
-    velocity.x = glm::mix(velocity.x, targetVel.x, accel * dt);
-    velocity.z = glm::mix(velocity.z, targetVel.z, accel * dt);
+    rigidBody->velocity.x = glm::mix(rigidBody->velocity.x, targetVel.x, accel * dt);
+    rigidBody->velocity.z = glm::mix(rigidBody->velocity.z, targetVel.z, accel * dt);
 
     // Jump
     if (input.isKeyPressed(GLFW_KEY_SPACE) && isGrounded) {
-        velocity.y = jumpForce;
+        rigidBody->velocity.y = jumpForce;
         isGrounded = false;
     }
 }
 
 void Player::update(float dt, PhysicsSystem *physicsSystem) {
     // Apply Gravity
-    velocity.y -= gravity * dt;
+    rigidBody->velocity.y -= gravity * dt;
 
     // Terminal velocity
-    velocity.y = std::max(velocity.y, -20.0f);
+    rigidBody->velocity.y = std::max(rigidBody->velocity.y, -20.0f);
 
     // Proposed movement
-    glm::vec3 displacement = velocity * dt;
+    glm::vec3 displacement = rigidBody->velocity * dt;
 
     // Collision Detection & Resolution (Kinematic)
     // We will do a simple "collide and slide" approach
@@ -94,20 +102,24 @@ void Player::update(float dt, PhysicsSystem *physicsSystem) {
         // Let's rely on a new method in PhysicsSystem we will add: `resolvePlayerCollision`
         // But for now, I'll implement a placeholder logic that assumes we will add that method.
 
-        glm::vec3 correction;
-        if (physicsSystem->checkPlayerCollision(*collider, correction)) {
-            // If we hit something moving Y
-            position += correction;
-
-            if (velocity.y < 0 && correction.y > 0) {
-                isGrounded = true;
-                velocity.y = 0;
-            } else if (velocity.y > 0 && correction.y < 0) {
-                // Hit ceiling
-                velocity.y = 0;
-            }
+        if (!rigidBody->isCollisionEnabled) {
+            // Skip collision check
         } else {
-            isGrounded = false;
+            glm::vec3 correction;
+            if (physicsSystem->checkPlayerCollision(*collider, correction, rigidBody->collisionMask)) {
+                // If we hit something moving Y
+                position += correction;
+
+                if (rigidBody->velocity.y < 0 && correction.y > 0) {
+                    isGrounded = true;
+                    rigidBody->velocity.y = 0;
+                } else if (rigidBody->velocity.y > 0 && correction.y < 0) {
+                    // Hit ceiling
+                    rigidBody->velocity.y = 0;
+                }
+            } else {
+                isGrounded = false;
+            }
         }
     }
 
@@ -119,10 +131,12 @@ void Player::update(float dt, PhysicsSystem *physicsSystem) {
         collider->min = position + glm::vec3(-radius, 0.0f, -radius);
         collider->max = position + glm::vec3(radius, height, radius);
 
-        glm::vec3 correction;
-        if (physicsSystem->checkPlayerCollision(*collider, correction,collisionMask)) {
-            position += correction;
-            // No need to kill velocity, just slide (position is already corrected)
+        if (rigidBody->isCollisionEnabled) {
+            glm::vec3 correction;
+            if (physicsSystem->checkPlayerCollision(*collider, correction, rigidBody->collisionMask)) {
+                position += correction;
+                // No need to kill velocity, just slide (position is already corrected)
+            }
         }
     }
 

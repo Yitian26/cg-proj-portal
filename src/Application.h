@@ -39,9 +39,6 @@ private:
     std::unique_ptr<Renderer> renderer;
     std::unique_ptr<Scene> scene;
 
-    // Player
-    std::unique_ptr<Player> player;
-
     // Camera fallback used before player is initialized
     Camera fallbackCamera;
     Camera &getActiveCamera();

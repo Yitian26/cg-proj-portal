@@ -20,3 +20,9 @@ void GameObject::setCollisionMask(uint32_t mask) {
         rigidBody->collisionMask = mask;
     }
 }
+
+void GameObject::setCollisionEnabled(bool enabled) {
+    if (rigidBody) {
+        rigidBody->isCollisionEnabled = enabled;
+    }
+}

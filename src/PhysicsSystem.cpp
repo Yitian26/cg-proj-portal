@@ -98,6 +98,7 @@ void PhysicsSystem::checkCollisions() {
             PhysicsObject &a = physicsObjects[i];
             PhysicsObject &b = physicsObjects[j];
 
+            if (!a.rigidBody->isCollisionEnabled || !b.rigidBody->isCollisionEnabled) continue;
             if (a.rigidBody->isStatic && b.rigidBody->isStatic) continue; // Skip static-static
 
             // Check collision masks
@@ -383,10 +384,10 @@ bool PhysicsSystem::checkPlayerCollision(const AABB &playerAABB, glm::vec3 &outC
             if (!obj.rigidBody->isStatic) {
                 // Apply a small impulse to the object away from the player
                 // Normal points from Obj to Player, so -normal is force direction
-                glm::vec3 pushForce = -normal * 10.0f; 
+                glm::vec3 pushForce = -normal * 10.0f;
                 pushForce.y = 0.0f; // Keep it horizontal for now to avoid stomping
                 obj.rigidBody->addForce(pushForce);
-                
+
                 // Also wake it up if sleeping (not implemented yet, but good practice)
             }
         }

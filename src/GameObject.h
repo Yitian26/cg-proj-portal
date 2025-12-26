@@ -13,6 +13,8 @@ struct AABB;
 
 class GameObject {
 public:
+    std::string name;
+    bool isTeleportable = false;
     // Transform attributes
     glm::vec3 position;
     glm::vec3 rotation; // Euler angles in degrees
@@ -58,4 +60,7 @@ public:
 
     // Helper to set collision mask
     void setCollisionMask(uint32_t mask);
+
+    // Helper to enable/disable collision
+    void setCollisionEnabled(bool enabled);
 };

@@ -111,6 +111,10 @@ void Renderer::render(Scene &scene, Camera &camera) {
     shader->setMat4("projection", projection);
     shader->setMat4("view", view);
 
+    for (auto &pair : scene.triggers) {
+        pair.second->drawOBBDebug(*shader);
+    }
+
     if (scene.portalGun) scene.portalGun->draw(*shader);
 
     // Draw HUD
