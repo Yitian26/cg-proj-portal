@@ -52,4 +52,10 @@ public:
         // 3. Draw model
         model->Draw(shader);
     }
+
+    // Helper to set uniform scale based on desired X-axis size
+    void setScaleToSizeX(float sizeX);
+
+    // Helper to set collision mask
+    void setCollisionMask(uint32_t mask);
 };

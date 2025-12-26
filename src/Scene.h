@@ -50,12 +50,12 @@ struct Scene {
         objects[name] = std::move(obj);
     }
 
-    void addPhysics(GameObject *obj, bool isStatic, float mass = 1.0f, float restitution = 0.2f) {
+    void addPhysics(GameObject *obj, bool isStatic, uint32_t collisionMask = COLLISION_MASK_DEFAULT, float mass = 1.0f, float restitution = 0.2f) {
         obj->rigidBody = std::make_unique<RigidBody>();
         obj->rigidBody->isStatic = isStatic;
         obj->rigidBody->mass = mass;
         obj->rigidBody->restitution = restitution;
-
+        obj->rigidBody->collisionMask = collisionMask;
         // Expand collider slightly to be larger than the visual model
         glm::vec3 padding(0.15f);
         obj->collider = std::make_unique<AABB>(obj->model->minBound - padding, obj->model->maxBound + padding);

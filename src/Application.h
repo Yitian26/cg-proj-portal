@@ -12,6 +12,7 @@
 #include "Renderer.h"
 #include <vector>
 #include "InputManager.h"
+#include "Player.h"
 
 class Application {
 public:
@@ -38,8 +39,12 @@ private:
     std::unique_ptr<Renderer> renderer;
     std::unique_ptr<Scene> scene;
 
-    // Camera
-    static Camera camera;
+    // Player
+    std::unique_ptr<Player> player;
+
+    // Camera fallback used before player is initialized
+    Camera fallbackCamera;
+    Camera &getActiveCamera();
 
     // Input
     InputManager input;

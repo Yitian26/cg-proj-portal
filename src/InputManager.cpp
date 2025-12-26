@@ -31,8 +31,6 @@ void InputManager::initialize(GLFWwindow *wnd) {
     glfwGetCursorPos(window, &x, &y);
     mouseLastX = x; mouseLastY = y;
 
-    // set user pointer for possible callbacks
-    glfwSetWindowUserPointer(window, this);
     // optional: set scroll callback if you later add scroll accumulation
     // glfwSetScrollCallback(window, scroll_callback);
 }

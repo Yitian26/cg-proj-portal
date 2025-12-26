@@ -5,6 +5,10 @@
 #include <memory>
 #include <functional>
 
+constexpr uint32_t COLLISION_MASK_DEFAULT = 0xF;
+constexpr uint32_t COLLISION_MASK_PORTALON = 0x1;
+constexpr uint32_t COLLISION_MASK_NEARPORTAL = 0x2;
+
 // Forward declaration
 class GameObject;
 
@@ -43,6 +47,7 @@ struct RigidBody {
     bool isStatic = false;
     float friction = 0.5f;
     float restitution = 0.2f; // Bounciness
+    uint32_t collisionMask = 0xFFFFFFFF; // Bitmask for collision filtering
 
     void addForce(const glm::vec3 &f) {
         force += f;
@@ -80,6 +85,11 @@ public:
 
     void addObject(GameObject *obj, RigidBody *rb, AABB *col);
     void removeObject(GameObject *obj);
+
+    // Character Controller Helper
+    // Checks if the given AABB overlaps with any static physics object.
+    // Returns true if collision found, and sets correction vector to resolve it.
+    bool checkPlayerCollision(const AABB &playerAABB, glm::vec3 &outCorrection, uint32_t playerMask = 0xFFFFFFFF);
 
     void update(float dt);
 

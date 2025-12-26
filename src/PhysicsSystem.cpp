@@ -4,6 +4,7 @@
 #include <iostream>
 #include <glm/gtx/norm.hpp> // For length2
 
+
 PhysicsSystem::PhysicsSystem() : gravity(glm::vec3(0.0f, -9.81f, 0.0f)) {}
 
 PhysicsSystem::~PhysicsSystem() {}
@@ -98,6 +99,9 @@ void PhysicsSystem::checkCollisions() {
             PhysicsObject &b = physicsObjects[j];
 
             if (a.rigidBody->isStatic && b.rigidBody->isStatic) continue; // Skip static-static
+
+            // Check collision masks
+            if ((a.rigidBody->collisionMask & b.rigidBody->collisionMask) == 0) continue;
 
             glm::vec3 normal;
             float penetration;
@@ -341,4 +345,51 @@ RaycastHit PhysicsSystem::raycast(const glm::vec3 &origin, const glm::vec3 &dire
     }
 
     return hit;
+}
+
+bool PhysicsSystem::checkPlayerCollision(const AABB &playerAABB, glm::vec3 &outCorrection, uint32_t playerMask) {
+    outCorrection = glm::vec3(0.0f);
+    bool collided = false;
+
+    // Convert Player AABB to OBB for SAT check
+    glm::vec3 center = (playerAABB.min + playerAABB.max) * 0.5f;
+    glm::vec3 extents = (playerAABB.max - playerAABB.min) * 0.5f;
+    glm::vec3 axes[3] = { glm::vec3(1,0,0), glm::vec3(0,1,0), glm::vec3(0,0,1) };
+    OBB playerOBB(center, axes, extents);
+
+    for (auto &obj : physicsObjects) {
+        // Check collision mask
+        if ((obj.rigidBody->collisionMask & playerMask) == 0) continue;
+
+        // if (!obj.rigidBody->isStatic) continue; // Allow collision with dynamic objects
+
+        glm::vec3 normal;
+        float penetration;
+        if (checkCollisionSAT(playerOBB, obj.worldOBB, normal, penetration)) {
+            // Accumulate correction? Or just take the largest?
+            // For simple character controller, resolving one by one is okay-ish, 
+            // but taking the max penetration is safer to avoid jitter.
+            // Here we just apply the first one found (simple) or sum them (can be unstable).
+            // Let's try resolving immediately.
+
+            // Important: SAT normal points from B to A. 
+            // Here A is player, B is obj. So normal points towards player.
+            // We want to push player OUT of obj.
+
+            outCorrection += normal * penetration;
+            collided = true;
+
+            // Simple interaction: Push dynamic objects
+            if (!obj.rigidBody->isStatic) {
+                // Apply a small impulse to the object away from the player
+                // Normal points from Obj to Player, so -normal is force direction
+                glm::vec3 pushForce = -normal * 10.0f; 
+                pushForce.y = 0.0f; // Keep it horizontal for now to avoid stomping
+                obj.rigidBody->addForce(pushForce);
+                
+                // Also wake it up if sleeping (not implemented yet, but good practice)
+            }
+        }
+    }
+    return collided;
 }
