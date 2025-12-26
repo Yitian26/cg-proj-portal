@@ -2,7 +2,7 @@
 #include "GameObject.h"
 #include <algorithm>
 #include <iostream>
-#include <glm/gtx/norm.hpp> // For length2
+#include <glm/gtx/norm.hpp>
 
 
 PhysicsSystem::PhysicsSystem() : gravity(glm::vec3(0.0f, -9.81f, 0.0f)) {}
@@ -83,9 +83,11 @@ void PhysicsSystem::integrate(PhysicsObject &obj, float dt) {
     rb->velocity += acc * dt;
 
     // Apply Damping/Friction (Simple linear drag)
-    rb->velocity *= (1.0f - dt * 0.5f);
+    rb->velocity *= (1.0f - dt * 0.1f);
 
-    // x = x0 + vt
+    rb->velocity.y = std::max(rb->velocity.y, -40.0f);
+        
+        // x = x0 + vt
     go->position += rb->velocity * dt;
 
     // Clear forces for next frame

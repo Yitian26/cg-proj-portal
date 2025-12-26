@@ -45,6 +45,12 @@ void Player::processInput(const InputManager &input, float dt) {
 
     if (glm::length(targetVel) > 0.0f) {
         targetVel = glm::normalize(targetVel) * moveSpeed;
+    } else if (!isGrounded){
+        // No input: maintain current horizontal velocity for momentum
+        targetVel.x = rigidBody->velocity.x;
+        targetVel.z = rigidBody->velocity.z;
+    } else {
+        targetVel = glm::vec3(0.0f);
     }
 
     // Smoothly interpolate horizontal velocity (simple acceleration)

@@ -15,6 +15,9 @@ void Portal::init(Scene *scene) {
     nearTrigger->onEnter = [](GameObject *obj) {
         obj->setCollisionMask(COLLISION_MASK_NEARPORTAL);
         };
+    nearTrigger->onInside = [](GameObject *obj) {
+        obj->setCollisionMask(COLLISION_MASK_NEARPORTAL);
+        };
     nearTrigger->onExit = [](GameObject *obj) {
         obj->setCollisionMask(COLLISION_MASK_DEFAULT);
         };
@@ -123,22 +126,22 @@ void Portal::updateFramesTransform() {
     // Top
     if (frames[0]) {
         frames[0]->rotation = rotation;
-        frames[0]->position = position + axes[1] * (halfH + 0.3f - thickness * 0.5f) - axes[2] * (depth * 2.0f);
+        frames[0]->position = position + axes[1] * (halfH + 0.18f - thickness * 0.5f) - axes[2] * (depth * 2.0f - 0.1f);
     }
     // Bottom
     if (frames[1]) {
         frames[1]->rotation = rotation;
-        frames[1]->position = position + axes[1] * (-halfH - 0.3f + thickness * 0.5f) - axes[2] * (depth * 2.0f);
+        frames[1]->position = position + axes[1] * (-halfH - 0.18f + thickness * 0.5f) - axes[2] * (depth * 2.0f - 0.1f);
     }
     // Left
     if (frames[2]) {
         frames[2]->rotation = rotation;
-        frames[2]->position = position + axes[0] * (-halfW - 0.3f + thickness * 0.5f) - axes[2] * (depth * 2.0f);
+        frames[2]->position = position + axes[0] * (-halfW - 0.18f + thickness * 0.5f) - axes[2] * (depth * 2.0f - 0.1f);
     }
     // Right
     if (frames[3]) {
         frames[3]->rotation = rotation;
-        frames[3]->position = position + axes[0] * (halfW + 0.3f - thickness * 0.5f) - axes[2] * (depth * 2.0f);
+        frames[3]->position = position + axes[0] * (halfW + 0.18f - thickness * 0.5f) - axes[2] * (depth * 2.0f - 0.1f);
     }
 }
 
@@ -150,7 +153,7 @@ void Portal::checkRaycast(RaycastHit result) {
         result.object->setCollisionMask(COLLISION_MASK_PORTALON);
         onObject = result.object;
         std::cout << "Raycast hit object at distance: " << result.distance << std::endl;
-        position = result.point + result.normal * 0.01f;
+        position = result.point + result.normal * 0.03f;
         // Align portal normal (0,0,1) to hit normal
         float ny = glm::clamp(result.normal.y, -1.0f, 1.0f);
         float pitch = -glm::degrees(std::asin(ny));
@@ -174,7 +177,7 @@ void Portal::checkRaycast(RaycastHit result) {
         float halfWidth = scale.x;
         float halfHeight = scale.y;
         nearTrigger->setFromCenterAxesExtents(position + result.normal * 0.9f, axes, glm::vec3(halfWidth, halfHeight, 1.0f));
-        teleportTrigger->setFromCenterAxesExtents(position - result.normal * 0.4f, axes, glm::vec3(halfWidth, halfHeight, 0.5f));
+        teleportTrigger->setFromCenterAxesExtents(position - result.normal * 0.4f, axes, glm::vec3(halfWidth, halfHeight, 0.46f));
         // Update frames to follow portal
         updateFramesTransform();
     } else {

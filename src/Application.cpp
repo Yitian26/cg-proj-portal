@@ -65,7 +65,7 @@ bool Application::initialize() {
     input.initialize(window);
 
     // Initialize Player
-    scene->player = std::make_unique<Player>(glm::vec3(0.0f, 5.0f, 0.0f));
+    scene->player = std::make_unique<Player>(glm::vec3(0.0f, 20.0f, 0.0f));
     scene->lightPos = glm::vec3(5.0f, 5.0f, 5.0f);
 
     // --- Load Resources ---
@@ -103,6 +103,13 @@ bool Application::initialize() {
     scene->addPhysics(floor.get(), true);
     scene->addObject("floor", std::move(floor));
 
+    // 2. ceiling
+    auto ceil = std::make_unique<GameObject>(scene->modelResources["cube"].get());
+    ceil->position = glm::vec3(5.0f, 5.0f, 5.0f);
+    ceil->scale = glm::vec3(5.0f, 0.1f, 5.0f);
+    scene->addPhysics(ceil.get(), true);
+    scene->addObject("ceiling", std::move(ceil));
+
     // 3. Back Wall
     auto backWall = std::make_unique<GameObject>(scene->modelResources["cube"].get());
     backWall->position = glm::vec3(0.0f, 2.0f, -10.0f);
@@ -127,10 +134,10 @@ bool Application::initialize() {
 
     // 6. Falling Cube (Test Gravity)
     auto fallingCube = std::make_unique<GameObject>(scene->modelResources["portal_cube"].get());
-    fallingCube->position = glm::vec3(2.0f, 30.0f, 0.0f);
+    fallingCube->position = glm::vec3(0.0f, 30.0f, -5.0f);
     // fallingCube->rotation = glm::vec3(25.0f, 25.0f, 0.0f);
     fallingCube->setScaleToSizeX(1.0f);
-    // fallingCube->isTeleportable = true;
+    fallingCube->isTeleportable = true;
     scene->addPhysics(fallingCube.get(), false, 1.0f, 1.0f, 0.0f);
     scene->addObject("fallingCube", std::move(fallingCube));
 
@@ -218,10 +225,16 @@ void Application::processInput(float deltaTime) {
     if (input.isKeyPressed(GLFW_KEY_R)) {
         auto cube = scene->objects["fallingCube"].get();
         if (cube && cube->rigidBody) {
-            cube->position = glm::vec3(2.0f, 30.0f, 0.0f);
+            cube->position = glm::vec3(0.0f, 30.0f, -5.0f);
             cube->rigidBody->velocity = glm::vec3(0.0f);
             cube->rigidBody->clearForces();
         }
+    }
+
+    if (input.isKeyPressed(GLFW_KEY_T)) {
+        scene->player->position = glm::vec3(0.0f, 20.0f, 0.0f);
+        scene->player->rigidBody->velocity = glm::vec3(0.0f);
+        scene->player->rigidBody->clearForces();
     }
 
     if (input.isMousePressed(GLFW_MOUSE_BUTTON_LEFT)) {

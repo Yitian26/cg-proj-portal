@@ -21,11 +21,11 @@ public:
     // collisionMask is now in rigidBody->collisionMask
 
     // Configuration
-    float moveSpeed = 5.0f;
-    float jumpForce = 5.0f;
+    float moveSpeed = 4.0f;
+    float jumpForce = 4.0f;
     float gravity = 9.8f;
     float height = 2.0f;
-    float radius = 0.3f; // Approximate width
+    float radius = 0.25f; // Approximate width
 
     // collider is now in GameObject::collider
 

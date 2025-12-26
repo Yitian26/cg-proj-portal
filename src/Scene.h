@@ -64,8 +64,7 @@ struct Scene {
         obj->rigidBody->collisionMask = collisionMask;
         // Expand collider slightly to be larger than the visual model
         if (!obj->collider) {
-            glm::vec3 padding(0.15f);
-            obj->collider = std::make_unique<AABB>(obj->model->minBound - padding, obj->model->maxBound + padding);
+            obj->collider = std::make_unique<AABB>(obj->model->minBound, obj->model->maxBound);
         }
         physicsSystem->addObject(obj, obj->rigidBody.get(), obj->collider.get());
     }
