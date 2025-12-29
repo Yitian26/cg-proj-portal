@@ -14,6 +14,7 @@ public:
 
     Shader(const char *vertexPath, const char *fragmentPath);
     void use();
+    void unuse();
 
     // Utility uniform functions
     void setBool(const std::string &name, bool value) const;

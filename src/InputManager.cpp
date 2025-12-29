@@ -2,16 +2,6 @@
 #include <algorithm>
 #include <iostream>
 
-static void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
-    InputManager *im = static_cast<InputManager *>(glfwGetWindowUserPointer(window));
-    if (im) {
-        // accumulate scroll; update() will read and reset
-        // we can't access private member directly, so use a trick: cast and set via pointer arithmetic isn't safe.
-        // Instead, we'll rely on polling in update(), and leave callback unused for now.
-        (void)xoffset; (void)yoffset;
-    }
-}
-
 InputManager::InputManager() {}
 InputManager::~InputManager() {}
 
@@ -30,9 +20,6 @@ void InputManager::initialize(GLFWwindow *wnd) {
     double x, y;
     glfwGetCursorPos(window, &x, &y);
     mouseLastX = x; mouseLastY = y;
-
-    // optional: set scroll callback if you later add scroll accumulation
-    // glfwSetScrollCallback(window, scroll_callback);
 }
 
 void InputManager::update() {
@@ -57,7 +44,6 @@ void InputManager::update() {
     mouseDY = y - mouseLastY;
     mouseLastX = x; mouseLastY = y;
 
-    // read scroll via callback if implemented; leaving scrollY as 0 by default
     // trigger callbacks for pressed edges
     for (int k = 0; k <= GLFW_KEY_LAST; ++k) {
         if (isKeyPressed(k) && keyCallbacks[k]) {

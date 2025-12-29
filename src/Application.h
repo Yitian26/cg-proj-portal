@@ -20,6 +20,7 @@ public:
     ~Application();
 
     bool initialize();
+    void createScene(int level = 1);
     void run();
     void shutdown();
 
@@ -35,11 +36,9 @@ private:
     std::string title;
     GLFWwindow *window;
 
-    // Core Systems
     std::unique_ptr<Renderer> renderer;
     std::unique_ptr<Scene> scene;
 
-    // Camera fallback used before player is initialized
     Camera fallbackCamera;
     Camera &getActiveCamera();
 

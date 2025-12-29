@@ -22,7 +22,6 @@ void Skybox::loadCubemap(const std::vector<std::string> &faces) {
     glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
 
     int width, height, nrChannels;
-    // Skybox textures should not be flipped vertically
     stbi_set_flip_vertically_on_load(false);
 
     for (unsigned int i = 0; i < faces.size(); i++) {
@@ -51,7 +50,7 @@ void Skybox::loadCubemap(const std::vector<std::string> &faces) {
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
-    // Restore flip setting for other textures if necessary (usually true for OpenGL)
+    // Restore flip setting
     stbi_set_flip_vertically_on_load(true);
 }
 

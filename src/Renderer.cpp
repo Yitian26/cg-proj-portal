@@ -8,8 +8,10 @@ void Renderer::initialize() {
     glEnable(GL_DEPTH_TEST);
 
     // build and compile shaders
-    shader = std::make_unique<Shader>("shaders/default.vert", "shaders/default.frag");
-    portalShader = std::make_unique<Shader>("shaders/screen.vert", "shaders/screen.frag");
+    auto shader = std::make_unique<Shader>("shaders/default.vert", "shaders/default.frag");
+    auto portalShader = std::make_unique<Shader>("shaders/screen.vert", "shaders/screen.frag");
+    shaderCache["default"] = std::move(shader);
+    shaderCache["portal"] = std::move(portalShader);
     // HUD manager
     hud = std::make_unique<HUD>();
     hud->initialize();
@@ -54,10 +56,10 @@ void Renderer::drawScene(Scene &scene, Shader &shader, const glm::mat4 &view, co
 }
 
 void Renderer::renderPortal(Scene &scene, Portal *portal, glm::mat4 view, const glm::mat4 &projection, int recursionDepth) {
-    if (recursionDepth <= 0) return;
-    glm::mat4 transformedCam = portal->getTransformedView(view);
+    if (recursionDepth <= 0) return;//last frame TODO:render a foo texture
+    glm::mat4 transformedCam = portal->getTransformedView(view);// get transformed camera view
     renderPortal(scene,portal, transformedCam, projection, recursionDepth - 1);
-    portal->beginRender();
+    portal->beginRender();//render deeper level scene(for current portal)
     glm::vec4 worldPlane = portal->getPlaneEquation();
     glm::vec4 viewPlane = worldPlane * glm::inverse(transformedCam);
     glm::mat4 obliqueProjection = projection;
@@ -74,13 +76,14 @@ void Renderer::renderPortal(Scene &scene, Portal *portal, glm::mat4 view, const 
     obliqueProjection[3][2] = c.w - obliqueProjection[3][3];
 
     glm::vec3 virtualCamPos = glm::vec3(glm::inverse(transformedCam)[3]);
-    drawScene(scene, *shader, transformedCam, obliqueProjection, virtualCamPos);
+    drawScene(scene, *shaderCache["default"], transformedCam, obliqueProjection, virtualCamPos);//render current level scene
     if (recursionDepth > 1) {
+        auto portalShader = shaderCache["portal"].get();
         portalShader->use();
         portalShader->setMat4("projection", obliqueProjection);
         portalShader->setMat4("view", transformedCam);
-        portal->drawPrev(*portalShader);
-        shader->use();
+        portal->drawPrev(*portalShader);// render the previous frame texture on the portal surface
+        portalShader->unuse();
     }
     portal->endRender(width, height);
 }
@@ -97,9 +100,10 @@ void Renderer::render(Scene &scene, Camera &camera) {
     glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    drawScene(scene, *shader, view, projection, camera.Position);
+    drawScene(scene, *shaderCache["default"], view, projection, camera.Position);
 
     // 3. Draw Portals
+    auto portalShader = shaderCache["portal"].get();
     portalShader->use();
     portalShader->setMat4("projection", projection);
     portalShader->setMat4("view", view);
@@ -107,6 +111,7 @@ void Renderer::render(Scene &scene, Camera &camera) {
     if (scene.portalB) scene.portalB->draw(*portalShader);
 
     // 4. Draw Portal Gun
+    auto shader = shaderCache["default"].get();
     shader->use();
     shader->setMat4("projection", projection);
     shader->setMat4("view", view);

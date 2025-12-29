@@ -82,11 +82,10 @@ void Portal::init(Scene *scene) {
 }
 
 void Portal::createFrames(Model *cubeModel, float thickness, float depth) {
-    // Create 4 thin boxes around the portal. They are owned by the Portal.
     for (int i = 0; i < 4; ++i) {
         frames[i] = std::make_unique<GameObject>(cubeModel);
     }
-    // Apply initial transform based on current portal transform
+    // Apply initial transform
     updateFramesTransform();
     // set initial scales: top/bottom span portal width, left/right span portal height
     frames[0]->scale = glm::vec3(scale.x, thickness, depth);
@@ -99,7 +98,6 @@ void Portal::registerFramesPhysics(Scene *scene, uint32_t collisionMask) {
     if (!scene) return;
     for (int i = 0; i < 4; ++i) {
         if (frames[i]) {
-            // register physics only; Portal retains ownership and is responsible for transforms/draw
             scene->addPhysics(frames[i].get(), true, collisionMask);
         }
     }
@@ -155,7 +153,6 @@ void Portal::checkRaycast(RaycastHit result) {
         }
         result.object->setCollisionMask(COLLISION_MASK_PORTALON);
         onObject = result.object;
-        // std::cout << "Raycast hit object at distance: " << result.distance << std::endl;
         position = result.point + result.normal * 0.05f;
         // Align portal normal (0,0,1) to hit normal
         float ny = glm::clamp(result.normal.y, -1.0f, 1.0f);
@@ -183,8 +180,6 @@ void Portal::checkRaycast(RaycastHit result) {
         teleportTrigger->setFromCenterAxesExtents(position - result.normal * 0.4f, axes, glm::vec3(halfWidth, halfHeight, 0.46f));
         // Update frames to follow portal
         updateFramesTransform();
-    } else {
-        std::cout << "Raycast missed." << std::endl;
     }
 }
 
@@ -195,9 +190,14 @@ void Portal::beginRender() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
+void Portal::endRender(int scrWidth, int scrHeight) {
+    frameBuffer[currentBuffer]->Unbind();
+    glViewport(0, 0, scrWidth, scrHeight);
+}
+
 glm::mat4 Portal::getTransformedView(glm::mat4 view) {
     if (!linkedPortal) return view;
-    // 1. Get Model Matrices
+
     glm::mat4 myModel = glm::mat4(1.0f);
     myModel = glm::translate(myModel, position);
     myModel = glm::rotate(myModel, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
@@ -210,26 +210,18 @@ glm::mat4 Portal::getTransformedView(glm::mat4 view) {
     otherModel = glm::rotate(otherModel, glm::radians(linkedPortal->rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
     otherModel = glm::rotate(otherModel, glm::radians(linkedPortal->rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 
-    // 2. Calculate Relative Transform (Camera -> Me)
-
+    // Calculate Relative Transform (Camera -> Me)
     glm::mat4 camTransform = glm::inverse(view);
 
-    // Transformation from this portal's local space to the other portal's local space
-
-    // Step 1: Transform Camera to My Local Space
+    // Transform Camera to My Local Space
     glm::mat4 camInLocal = glm::inverse(myModel) * camTransform;
 
-    // Step 2: Rotate 180 degrees around Y (to face out)
+    // Rotate 180 degrees around Y (to face out)
 
     glm::mat4 rotation180 = glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 destView = otherModel * rotation180 * glm::inverse(myModel) * camTransform;
 
     return glm::inverse(destView);
-}
-
-void Portal::endRender(int scrWidth, int scrHeight) {
-    frameBuffer[currentBuffer]->Unbind();
-    glViewport(0, 0, scrWidth, scrHeight);
 }
 
 glm::vec4 Portal::getPlaneEquation() {
@@ -257,7 +249,7 @@ void Portal::draw(Shader &shader) {
     shader.setInt("reflectionTexture", 10);
 
     GameObject::draw(shader);
-
+    //TODO:draw a frame to recognize different portals
     glActiveTexture(GL_TEXTURE0);
 }
 
@@ -269,8 +261,4 @@ void Portal::drawPrev(Shader &shader) {
     GameObject::draw(shader);
 
     glActiveTexture(GL_TEXTURE0);
-}
-
-unsigned int Portal::getTextureID() const {
-    return frameBuffer[(currentBuffer + 1) % 2]->GetTextureID();
 }

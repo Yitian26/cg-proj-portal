@@ -67,7 +67,7 @@ public:
     }
 
     void draw(Shader &shader) override {
-        glClear(GL_DEPTH_BUFFER_BIT);
+        glClear(GL_DEPTH_BUFFER_BIT);//render on top
         if (!model) return;
         shader.setMat4("model", gunModelMatrix);
         model->Draw(shader);

@@ -33,14 +33,8 @@ public:
 
     void drawPrev(Shader &shader);
 
-    unsigned int getTextureID() const;
-
-    // Frame (door-frame) management. Portal owns these frames.
-    // Call `createFrames` after portal construction to create the 4 frame pieces.
-    // Then call `registerFramesPhysics(scene)` from Application to register them
-    // with the physics system (they remain owned by the Portal).
     void createFrames(Model *cubeModel, float thickness = 0.05f, float depth = 0.1f);
-    void registerFramesPhysics(struct Scene *scene, uint32_t collisionMask = COLLISION_MASK_DEFAULT);
+    void registerFramesPhysics(struct Scene *scene, uint32_t collisionMask = COLLISION_MASK_PORTALFRAME);
 
     // Update frame transforms to follow portal position/rotation/scale.
     void updateFramesTransform();

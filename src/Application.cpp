@@ -61,10 +61,10 @@ bool Application::initialize() {
     renderer = std::make_unique<Renderer>(width, height);
     renderer->initialize();
 
-    // Initialize input manager
+    // --- Initialize input manager ---
     input.initialize(window);
 
-    // Initialize Player
+    // --- Initialize Player ---
     scene->player = std::make_unique<Player>(glm::vec3(0.0f, 20.0f, 0.0f));
     scene->lightPos = glm::vec3(5.0f, 5.0f, 5.0f);
 
@@ -77,14 +77,14 @@ bool Application::initialize() {
     scene->addModelResource("portal_cube", std::move(portal_cubeModel));
     scene->addModelResource("portal_gun", std::move(portal_gunModel));
 
-    // Portal A
+    // --- Portal A ---
     scene->portalA = std::make_unique<Portal>(scene->modelResources["cube"].get(), width, height);
     scene->portalA->position = glm::vec3(100.0f, 1.0f, 101.0f);
     scene->portalA->scale = glm::vec3(1.0f, 1.6f, 0.005f);
     scene->portalA->name = "PortalA";
     scene->portalA->init(scene.get());
 
-    // Portal B
+    // --- Portal B ---
     scene->portalB = std::make_unique<Portal>(scene->modelResources["cube"].get(), width, height);
     scene->portalB->position = glm::vec3(100.0f, 0.0f, 100.0f);
     scene->portalB->rotation = glm::vec3(0.0f, 180.0f, 0.0f);
@@ -92,66 +92,18 @@ bool Application::initialize() {
     scene->portalB->name = "PortalB";
     scene->portalB->init(scene.get());
 
-    // Link Portals
+    // --- Link Portals ---
     scene->portalA->setLinkedPortal(scene->portalB.get());
     scene->portalB->setLinkedPortal(scene->portalA.get());
 
-    // 2. Floor (Ground)
-    auto floor = std::make_unique<GameObject>(scene->modelResources["cube"].get());
-    floor->position = glm::vec3(0.0f, -2.0f, 0.0f);
-    floor->scale = glm::vec3(10.0f, 0.1f, 10.0f);
-    floor->canOpenPortal = true;
-    scene->addPhysics(floor.get(), true);
-    scene->addObject("floor", std::move(floor));
-
-    // 2. ceiling
-    auto ceil = std::make_unique<GameObject>(scene->modelResources["cube"].get());
-    ceil->position = glm::vec3(5.0f, 5.0f, 5.0f);
-    ceil->scale = glm::vec3(5.0f, 0.1f, 5.0f);
-    ceil->canOpenPortal = true;
-    scene->addPhysics(ceil.get(), true);
-    scene->addObject("ceiling", std::move(ceil));
-
-    // 3. Back Wall
-    auto backWall = std::make_unique<GameObject>(scene->modelResources["cube"].get());
-    backWall->position = glm::vec3(0.0f, 2.0f, -10.0f);
-    backWall->scale = glm::vec3(10.0f, 5.0f, 0.1f);
-    backWall->rotation = glm::vec3(-25.0f, 0.0f, 0.0f);
-    backWall->canOpenPortal = true;
-    scene->addPhysics(backWall.get(), true);
-    scene->addObject("backWall", std::move(backWall));
-
-    // 4. Left Wall
-    auto leftWall = std::make_unique<GameObject>(scene->modelResources["cube"].get());
-    leftWall->position = glm::vec3(-10.0f, 3.0f, 0.0f);
-    leftWall->scale = glm::vec3(0.1f, 5.0f, 10.0f);
-    leftWall->canOpenPortal = true;
-    scene->addPhysics(leftWall.get(), true);
-    scene->addObject("leftWall", std::move(leftWall));
-
-    // 3. Front Wall
-    auto frontWall = std::make_unique<GameObject>(scene->modelResources["cube"].get());
-    frontWall->position = glm::vec3(0.0f, 3.0f, 10.0f);
-    frontWall->scale = glm::vec3(10.0f, 5.0f, 0.1f);
-    frontWall->canOpenPortal = true;
-    scene->addPhysics(frontWall.get(), true);
-    scene->addObject("frontWall", std::move(frontWall));
-
-    // 6. Falling Cube (Test Gravity)
-    auto fallingCube = std::make_unique<GameObject>(scene->modelResources["portal_cube"].get());
-    fallingCube->position = glm::vec3(0.0f, 30.0f, -5.0f);
-    // fallingCube->rotation = glm::vec3(25.0f, 25.0f, 0.0f);
-    fallingCube->setScaleToSizeX(0.7f);
-    fallingCube->isTeleportable = true;
-    scene->addPhysics(fallingCube.get(), false, 1.0f, 0.2f, 0.5f);
-    scene->addObject("fallingCube", std::move(fallingCube));
-
-    // 7. Portal Gun
+    // --- Portal Gun ---
     scene->portalGun = std::make_unique<PortalGun>(scene->modelResources["portal_gun"].get());
     scene->portalGun->position = glm::vec3(0.5f, -0.5f, -1.0f);
     scene->portalGun->scale = glm::vec3(0.05f);
 
-    // Initialize Skybox
+    createScene();
+
+    // --- Initialize Skybox ---
     std::vector<std::string> faces = {
         "resources/skybox/right.jpg",
         "resources/skybox/left.jpg",
@@ -162,12 +114,58 @@ bool Application::initialize() {
     };
     scene->skybox = std::make_unique<Skybox>(faces);
 
-    // Initialize Physics World State (Update OBBs)
+    // --- Initialize Physics World State ---
     if (scene->physicsSystem) {
         scene->physicsSystem->update(0.0f);
     }
 
     return true;
+}
+
+void Application::createScene(int level) {
+    (void *)level;
+    auto floor = std::make_unique<GameObject>(scene->modelResources["cube"].get());
+    floor->position = glm::vec3(0.0f, -2.0f, 0.0f);
+    floor->scale = glm::vec3(10.0f, 0.1f, 10.0f);
+    floor->canOpenPortal = true;
+    scene->addPhysics(floor.get(), true);
+    scene->addObject("floor", std::move(floor));
+
+    auto ceil = std::make_unique<GameObject>(scene->modelResources["cube"].get());
+    ceil->position = glm::vec3(5.0f, 5.0f, 5.0f);
+    ceil->scale = glm::vec3(5.0f, 0.1f, 5.0f);
+    ceil->canOpenPortal = true;
+    scene->addPhysics(ceil.get(), true);
+    scene->addObject("ceiling", std::move(ceil));
+
+    auto backWall = std::make_unique<GameObject>(scene->modelResources["cube"].get());
+    backWall->position = glm::vec3(0.0f, 2.0f, -10.0f);
+    backWall->scale = glm::vec3(10.0f, 5.0f, 0.1f);
+    backWall->rotation = glm::vec3(-25.0f, 0.0f, 0.0f);
+    backWall->canOpenPortal = true;
+    scene->addPhysics(backWall.get(), true);
+    scene->addObject("backWall", std::move(backWall));
+
+    auto leftWall = std::make_unique<GameObject>(scene->modelResources["cube"].get());
+    leftWall->position = glm::vec3(-10.0f, 3.0f, 0.0f);
+    leftWall->scale = glm::vec3(0.1f, 5.0f, 10.0f);
+    leftWall->canOpenPortal = true;
+    scene->addPhysics(leftWall.get(), true);
+    scene->addObject("leftWall", std::move(leftWall));
+
+    auto frontWall = std::make_unique<GameObject>(scene->modelResources["cube"].get());
+    frontWall->position = glm::vec3(0.0f, 3.0f, 10.0f);
+    frontWall->scale = glm::vec3(10.0f, 5.0f, 0.1f);
+    frontWall->canOpenPortal = true;
+    scene->addPhysics(frontWall.get(), true);
+    scene->addObject("frontWall", std::move(frontWall));
+
+    auto fallingCube = std::make_unique<GameObject>(scene->modelResources["portal_cube"].get());
+    fallingCube->position = glm::vec3(0.0f, 30.0f, -5.0f);
+    fallingCube->setScaleToSizeX(0.7f);
+    fallingCube->isTeleportable = true;
+    scene->addPhysics(fallingCube.get(), false, 1.0f, 0.2f, 0.5f);
+    scene->addObject("fallingCube", std::move(fallingCube));
 }
 
 void Application::run() {
@@ -217,7 +215,7 @@ void Application::processInput(float deltaTime) {
         glfwSetWindowShouldClose(window, true);
 
     if (scene->player) {
-        scene->player->processInput(input, deltaTime);
+        scene->player->processInput(input, scene.get(), deltaTime);
     }
 
     Camera &cam = getActiveCamera();
@@ -240,30 +238,6 @@ void Application::processInput(float deltaTime) {
         scene->player->position = glm::vec3(0.0f, 20.0f, 0.0f);
         scene->player->rigidBody->velocity = glm::vec3(0.0f);
         scene->player->rigidBody->clearForces();
-    }
-
-    if (input.isKeyPressed(GLFW_KEY_E)) {
-        if (scene->player->isGrabbing) {
-            // Release
-            scene->player->isGrabbing = false;
-        } else {
-            auto result = scene->physicsSystem->raycast(cam.Position, cam.Front, 5.0f);
-            if (result.hit && result.object && result.object->isTeleportable) {
-                scene->player->isGrabbing = true;
-                scene->player->grabbedObject = result.object;
-            }
-        }
-    }
-
-    if (input.isMousePressed(GLFW_MOUSE_BUTTON_LEFT)) {
-        scene->portalGun->fire();
-        auto result = scene->physicsSystem->raycast(cam.Position, cam.Front, 100.0f);
-        scene->portalA->checkRaycast(result);
-    }
-    if (input.isMousePressed(GLFW_MOUSE_BUTTON_RIGHT)) {
-        scene->portalGun->fire();
-        auto result = scene->physicsSystem->raycast(cam.Position, cam.Front, 100.0f);
-        scene->portalB->checkRaycast(result);
     }
 }
 

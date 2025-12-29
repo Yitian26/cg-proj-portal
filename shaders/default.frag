@@ -41,7 +41,6 @@ uniform DirLight dirLight;
 uniform PointLight pointLights[NR_POINT_LIGHTS];
 uniform Material material;
 
-// Function prototypes
 vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir);
 vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
 
@@ -51,27 +50,12 @@ void main()
     vec3 norm = normalize(Normal);
     vec3 viewDir = normalize(viewPos - FragPos);
     
-    // == =====================================================
-    // Our lighting is set up in 3 phases: directional, point lights and an optional flashlight
-    // For each phase, a calculate function is defined that calculates the corresponding color
-    // per lamp. In the main() function we take all the calculated colors and sum them up for
-    // this fragment's final color.
-    // == =====================================================
     // phase 1: directional lighting
     vec3 result = CalcDirLight(dirLight, norm, viewDir);
     // phase 2: point lights
     for(int i = 0; i < NR_POINT_LIGHTS; i++)
         result += CalcPointLight(pointLights[i], norm, FragPos, viewDir);    
     
-    // Debug: if result is too dark, add some ambient
-    // result += vec3(0.2); 
-    
-    // Debug: Output normals to verify geometry
-    // FragColor = vec4(norm * 0.5 + 0.5, 1.0);
-    
-    // Debug: Output solid color if texture is missing/black
-    // if (length(result) < 0.01) result = vec3(1.0, 0.0, 1.0); // Magenta for unlit/black
-
     FragColor = vec4(result, 1.0);
 }
 

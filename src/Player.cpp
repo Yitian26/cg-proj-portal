@@ -1,10 +1,11 @@
 #include "Player.h"
+#include "Scene.h"
 #include <iostream>
 #include <algorithm>
 
 Player::Player(glm::vec3 startPos)
-    : GameObject(nullptr, startPos), // Initialize GameObject
-    camera(startPos), // Default, will be updated
+    : GameObject(nullptr, startPos),
+    camera(startPos),
     isGrounded(false) {
 
     isTeleportable = true;
@@ -20,15 +21,13 @@ Player::Player(glm::vec3 startPos)
     glm::vec3 max = position + glm::vec3(radius, height * 0.5f, radius);
     collider = std::make_unique<AABB>(min, max);
 
-    // Set correct camera height based on member variable (eyes at center + 0.4 * height)
+    // Set correct camera height
     camera.Position = position + glm::vec3(0.0f, height * 0.4f, 0.0f);
 }
 
-void Player::processInput(const InputManager &input, float dt) {
-    // Calculate target velocity based on input
+void Player::processInput(const InputManager &input, Scene *scene,float dt) {
     glm::vec3 targetVel(0.0f);
 
-    // Get camera forward/right vectors but flatten them on Y axis
     glm::vec3 forward = camera.Front;
     forward.y = 0.0f;
     forward = glm::normalize(forward);
@@ -45,7 +44,6 @@ void Player::processInput(const InputManager &input, float dt) {
     if (glm::length(targetVel) > 0.0f) {
         targetVel = glm::normalize(targetVel) * moveSpeed;
     } else if (!isGrounded) {
-        // No input: maintain current horizontal velocity for momentum
         targetVel.x = rigidBody->velocity.x;
         targetVel.z = rigidBody->velocity.z;
     } else {
@@ -64,6 +62,31 @@ void Player::processInput(const InputManager &input, float dt) {
         rigidBody->velocity.y = jumpForce;
         isGrounded = false;
     }
+
+    //grabbing
+    if (input.isKeyPressed(GLFW_KEY_E)) {
+        if (isGrabbing) {
+            isGrabbing = false;
+        } else {
+            auto result = scene->physicsSystem->raycast(camera.Position, camera.Front, 5.0f);
+            if (result.hit && result.object && result.object->isTeleportable) {
+                isGrabbing = true;
+                grabbedObject = result.object;
+            }
+        }
+    }
+
+    //respawn portal
+    if (input.isMousePressed(GLFW_MOUSE_BUTTON_LEFT)) {
+        scene->portalGun->fire();
+        auto result = scene->physicsSystem->raycast(camera.Position, camera.Front, 100.0f);
+        scene->portalA->checkRaycast(result);
+    }
+    if (input.isMousePressed(GLFW_MOUSE_BUTTON_RIGHT)) {
+        scene->portalGun->fire();
+        auto result = scene->physicsSystem->raycast(camera.Position, camera.Front, 100.0f);
+        scene->portalB->checkRaycast(result);
+    }
 }
 
 void Player::update(float dt, PhysicsSystem *physicsSystem) {
@@ -76,84 +99,52 @@ void Player::update(float dt, PhysicsSystem *physicsSystem) {
     // Proposed movement
     glm::vec3 displacement = rigidBody->velocity * dt;
 
-    // Collision Detection & Resolution (Kinematic)
-    // We will do a simple "collide and slide" approach
-    // 1. Try moving X
-    // 2. Try moving Z
-    // 3. Try moving Y
+    position.y += displacement.y;
+    // Update collider (centered on position)
+    collider->min = position + glm::vec3(-radius, -height * 0.5f, -radius);
+    collider->max = position + glm::vec3(radius, height * 0.5f, radius);
 
-    // Update collider to current position before checking
-    // Actually, we need to check *from* current position *to* new position
-
-    // Simple iterative solver:
-    // Move Y first (handle gravity/ground)
-    {
-        position.y += displacement.y;
-        // Update collider (centered on position)
-        collider->min = position + glm::vec3(-radius, -height * 0.5f, -radius);
-        collider->max = position + glm::vec3(radius, height * 0.5f, radius);
-
-        // Check collision
-        // We need a way to query the physics system for overlaps with this AABB
-        // Since PhysicsSystem doesn't expose a "checkOverlap(AABB)" directly, we might need to add it or iterate here.
-        // For now, let's assume we can iterate physics objects.
-        // But PhysicsSystem::physicsObjects is private. 
-        // We should add a helper to PhysicsSystem: `bool checkOverlap(const AABB& aabb, glm::vec3& correction)`
-
-        // WORKAROUND: Since we can't easily modify PhysicsSystem private access without editing it, 
-        // let's assume we will add a public method `checkPlayerCollision` to PhysicsSystem.
-        // Or we can use raycasts for ground detection and simple AABB checks if we had access.
-
-        // Let's rely on a new method in PhysicsSystem we will add: `resolvePlayerCollision`
-        // But for now, I'll implement a placeholder logic that assumes we will add that method.
-
-        if (!rigidBody->isCollisionEnabled) {
-            // Skip collision check
-        } else {
-            glm::vec3 correction;
-            if (physicsSystem->checkPlayerCollision(*collider, correction, rigidBody->collisionMask)) {
-                // If we hit something moving Y
-                position += correction;
-
-                if (rigidBody->velocity.y < 0 && correction.y > 0) {
-                    isGrounded = true;
-                    rigidBody->velocity.y = 0;
-                } else if (rigidBody->velocity.y > 0 && correction.y < 0) {
-                    // Hit ceiling
-                    rigidBody->velocity.y = 0;
-                }
-            } else {
-                isGrounded = false;
+    if (!rigidBody->isCollisionEnabled) {
+        // Skip collision check
+    } else {
+        glm::vec3 correction;
+        if (physicsSystem->checkPlayerCollision(*collider, correction, rigidBody->collisionMask)) {
+            position += correction;
+            if (rigidBody->velocity.y < 0 && correction.y > 0) {
+                isGrounded = true;
+                rigidBody->velocity.y = 0;
+            } else if (rigidBody->velocity.y > 0 && correction.y < 0) {
+                rigidBody->velocity.y = 0;
             }
+        } else {
+            isGrounded = false;
         }
     }
 
+
     // Move X/Z
-    {
-        glm::vec3 horizontalDisp = glm::vec3(displacement.x, 0.0f, displacement.z);
-        position += horizontalDisp;
+    glm::vec3 horizontalDisp = glm::vec3(displacement.x, 0.0f, displacement.z);
+    position += horizontalDisp;
 
-        collider->min = position + glm::vec3(-radius, -height * 0.5f, -radius);
-        collider->max = position + glm::vec3(radius, height * 0.5f, radius);
+    collider->min = position + glm::vec3(-radius, -height * 0.5f, -radius);
+    collider->max = position + glm::vec3(radius, height * 0.5f, radius);
 
-        if (rigidBody->isCollisionEnabled) {
-            glm::vec3 correction;
-            if (physicsSystem->checkPlayerCollision(*collider, correction, rigidBody->collisionMask)) {
-                position += correction;
-                // No need to kill velocity, just slide (position is already corrected)
-            }
+    if (rigidBody->isCollisionEnabled) {
+        glm::vec3 correction;
+        if (physicsSystem->checkPlayerCollision(*collider, correction, rigidBody->collisionMask)) {
+            position += correction;
         }
+    }
 
-        if (isGrabbing && grabbedObject) {
-            glm::vec3 targetPos = position + camera.Front * 2.0f + camera.Right * 0.5f + glm::vec3(0.0f, 0.3f, 0.0f);
-            if (glm::length(targetPos - grabbedObject->position) > 3.0f) {
-                // Too far, release
-                isGrabbing = false;
-            } else {
-                glm::vec3 springForce = (targetPos - grabbedObject->position) * 30.0f;
-                glm::vec3 dumplingForce = -grabbedObject->rigidBody->velocity * 5.0f;
-                grabbedObject->rigidBody->addForce(springForce + dumplingForce);
-            }
+    if (isGrabbing && grabbedObject) {
+        glm::vec3 targetPos = position + camera.Front * 2.0f + camera.Right * 0.5f + glm::vec3(0.0f, 0.3f, 0.0f);
+        if (glm::length(targetPos - grabbedObject->position) > 3.0f) {
+            // Too far, release
+            isGrabbing = false;
+        } else {
+            glm::vec3 springForce = (targetPos - grabbedObject->position) * 30.0f;
+            glm::vec3 dumplingForce = -grabbedObject->rigidBody->velocity * 5.0f;
+            grabbedObject->rigidBody->addForce(springForce + dumplingForce);
         }
     }
 

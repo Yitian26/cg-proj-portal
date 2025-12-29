@@ -62,7 +62,6 @@ struct Scene {
         obj->rigidBody->restitution = restitution;
         obj->rigidBody->friction = friction;
         obj->rigidBody->collisionMask = collisionMask;
-        // Expand collider slightly to be larger than the visual model
         if (!obj->collider) {
             obj->collider = std::make_unique<AABB>(obj->model->minBound, obj->model->maxBound);
         }
