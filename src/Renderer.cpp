@@ -9,6 +9,7 @@ void Renderer::initialize() {
 
     // build and compile shaders
     auto shader = std::make_unique<Shader>("shaders/default.vert", "shaders/default.frag");
+    shader->setBool("useAlphaTest", false);
     auto portalShader = std::make_unique<Shader>("shaders/screen.vert", "shaders/screen.frag");
     shaderCache["default"] = std::move(shader);
     shaderCache["portal"] = std::move(portalShader);

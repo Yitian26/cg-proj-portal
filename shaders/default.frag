@@ -40,12 +40,19 @@ uniform vec3 viewPos;
 uniform DirLight dirLight;
 uniform PointLight pointLights[NR_POINT_LIGHTS];
 uniform Material material;
+uniform bool useAlphaTest;
 
 vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir);
 vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
 
 void main()
 {    
+    if (useAlphaTest) {
+        vec4 texColor = texture(material.texture_diffuse1, TexCoords);
+        if (texColor.a < 0.1)
+            discard;
+    }
+
     // properties
     vec3 norm = normalize(Normal);
     vec3 viewDir = normalize(viewPos - FragPos);
