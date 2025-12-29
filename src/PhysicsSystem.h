@@ -1,9 +1,9 @@
 #pragma once
 
-#include <glm/glm.hpp>
 #include <vector>
 #include <memory>
-#include <functional>
+
+#include <glm/glm.hpp>
 
 constexpr uint32_t COLLISION_MASK_DEFAULT = 0xF;
 constexpr uint32_t COLLISION_MASK_PORTALFRAME = 0xF0;

@@ -1,11 +1,12 @@
 #pragma once
 
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 #include "Model.h"
 #include "Shader.h"
 #include "Camera.h"
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 // Forward declaration to avoid circular dependency if PhysicsSystem includes GameObject
 struct RigidBody;

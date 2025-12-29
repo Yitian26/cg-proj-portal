@@ -1,8 +1,10 @@
 #pragma once
 
-#include <glad/gl.h>
 #include "GameObject.h"
 #include "Camera.h"
+
+#include <glad/gl.h>
+
 
 class PortalGun : public GameObject {
 private:

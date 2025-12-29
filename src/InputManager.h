@@ -1,7 +1,8 @@
 #pragma once
-#include <GLFW/glfw3.h>
 #include <vector>
 #include <functional>
+
+#include <GLFW/glfw3.h>
 
 class InputManager {
 public:

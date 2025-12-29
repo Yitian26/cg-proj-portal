@@ -1,10 +1,13 @@
 #include "Application.h"
 #include "PortalGun.h"
-#include <iostream>
 #include "InputManager.h"
-#include <cmath>
 #include "Trigger.h"
+
+#include <iostream>
+#include <cmath>
+
 #include <glm/gtc/matrix_transform.hpp>
+
 float lastX = 1920.0f / 2.0f;
 float lastY = 1080.0f / 2.0f;
 bool firstMouse = true;

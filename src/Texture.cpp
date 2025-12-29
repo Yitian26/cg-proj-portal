@@ -1,7 +1,9 @@
 #include "Texture.h"
+
+#include <iostream>
+
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
-#include <iostream>
 
 unsigned int Texture::WhiteTexture = 0;
 unsigned int Texture::CheckerboardTexture = 0;

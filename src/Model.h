@@ -1,10 +1,5 @@
 #pragma once
 
-#include <glad/gl.h> 
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <stb_image.h>
-
 #include "Mesh.h"
 #include "Shader.h"
 
@@ -14,6 +9,11 @@
 #include <iostream>
 #include <map>
 #include <vector>
+
+#include <glad/gl.h> 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <stb_image.h>
 
 class Model {
 public:

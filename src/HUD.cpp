@@ -1,6 +1,8 @@
 #include "HUD.h"
-#include <glm/gtc/type_ptr.hpp>
+
 #include <vector>
+
+#include <glm/gtc/type_ptr.hpp>
 
 void HUD::initialize() {
     hudShader = std::make_unique<Shader>("shaders/hud.vert", "shaders/hud.frag");

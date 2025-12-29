@@ -1,11 +1,13 @@
 #pragma once
 
-#include <memory>
-#include <unordered_map>
 #include "Shader.h"
 #include "Scene.h"
 #include "Camera.h"
 #include "HUD.h"
+
+#include <memory>
+#include <unordered_map>
+
 #include <glad/gl.h>
 #include <glm/glm.hpp>
 

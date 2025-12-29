@@ -1,7 +1,8 @@
 #pragma once
 
-#include <glad/gl.h>
 #include <iostream>
+
+#include <glad/gl.h>
 
 class FrameBuffer {
 public:

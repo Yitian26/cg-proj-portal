@@ -1,8 +1,10 @@
 #include "Model.h"
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <map>
+
 
 Model::Model(std::string const &path, bool gamma) : gammaCorrection(gamma) {
     minBound = glm::vec3(std::numeric_limits<float>::max());

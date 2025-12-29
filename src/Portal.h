@@ -4,6 +4,8 @@
 #include "FrameBuffer.h"
 #include "Camera.h"
 #include "Trigger.h"
+#include "Texture.h"
+
 #include <memory>
 #include <array>
 

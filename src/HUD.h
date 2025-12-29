@@ -1,9 +1,10 @@
 #pragma once
+#include "Shader.h"
 
 #include <memory>
+
 #include <glm/glm.hpp>
 #include <glad/gl.h>
-#include "Shader.h"
 
 // Simple HUD manager: crosshair + text stubs
 class HUD {

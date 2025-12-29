@@ -1,11 +1,5 @@
 #pragma once
 
-#include <glad/gl.h>
-#include <GLFW/glfw3.h>
-
-#include <string>
-#include <memory>
-
 #include "Shader.h"
 #include "Camera.h"
 #include "Scene.h"
@@ -13,6 +7,12 @@
 #include <vector>
 #include "InputManager.h"
 #include "Player.h"
+
+#include <string>
+#include <memory>
+
+#include <glad/gl.h>
+#include <GLFW/glfw3.h>
 
 class Application {
 public:

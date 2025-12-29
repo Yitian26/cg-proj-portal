@@ -1,10 +1,10 @@
 #pragma once
+#include <vector>
 
 #include <glad/gl.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include <vector>
 
 enum Camera_Movement {
     FORWARD,

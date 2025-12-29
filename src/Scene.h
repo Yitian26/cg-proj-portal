@@ -1,9 +1,5 @@
 #pragma once
 
-#include <vector>
-#include <memory>
-#include <unordered_map>
-#include <glm/glm.hpp>
 #include "GameObject.h"
 #include "Portal.h"
 #include "Model.h"
@@ -12,6 +8,13 @@
 #include "PhysicsSystem.h"
 #include "Player.h"
 #include "Trigger.h"
+
+#include <vector>
+#include <memory>
+#include <unordered_map>
+
+#include <glm/glm.hpp>
+
 
 struct Scene {
     // Resource Management

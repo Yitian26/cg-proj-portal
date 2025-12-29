@@ -1,10 +1,11 @@
 #pragma once
+#include "Shader.h"
 
-#include <glad/gl.h>
 #include <vector>
 #include <string>
 #include <iostream>
-#include "Shader.h"
+
+#include <glad/gl.h>
 
 class Skybox {
 public:

@@ -1,6 +1,8 @@
 #include "Trigger.h"
 #include "GameObject.h"
+
 #include <cmath>
+
 #include <glad/gl.h>
 #include <glm/gtc/type_ptr.hpp>
 
