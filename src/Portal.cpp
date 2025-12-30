@@ -2,10 +2,50 @@
 #include "Scene.h"
 #include "Player.h"
 
-Portal::Portal(Model *model, int width, int height, glm::vec3 pos, glm::vec3 rot, glm::vec3 scale)
-    : GameObject(model, pos, rot, scale), linkedPortal(nullptr) {
+Portal::Portal(int width, int height, glm::vec3 pos, glm::vec3 rot, glm::vec3 scale)
+    : GameObject(nullptr, pos, rot, scale), linkedPortal(nullptr) {
     frameBuffer[0] = std::make_unique<FrameBuffer>(width, height);
     frameBuffer[1] = std::make_unique<FrameBuffer>(width, height);
+
+    // Setup quad VAO/VBO
+    float vertices[] = {
+        // positions          // normals           // texture coords
+        -1.0f, -1.0f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,  // bottom left
+         1.0f, -1.0f, 0.0f,   0.0f, 0.0f, 1.0f,   1.0f, 0.0f,  // bottom right
+         1.0f,  1.0f, 0.0f,   0.0f, 0.0f, 1.0f,   1.0f, 1.0f,  // top right
+
+        -1.0f, -1.0f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,  // bottom left
+         1.0f,  1.0f, 0.0f,   0.0f, 0.0f, 1.0f,   1.0f, 1.0f,  // top right
+        -1.0f,  1.0f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 1.0f   // top left
+    };
+    glGenVertexArrays(1, &contentVAO);
+    glGenBuffers(1, &contentVBO);
+
+    glBindVertexArray(contentVAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, contentVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    // position attribute
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(0);
+    // normal attribute
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    // texture coord attribute
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(6 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+
+    glBindVertexArray(0);
+
+    // Load frame textures
+    frameTextureA = std::make_unique<Texture>("resources/texture/portal_blue.png", ".", "texture_diffuse");
+    frameTextureB = std::make_unique<Texture>("resources/texture/portal_yellow.png", ".", "texture_diffuse");
+}
+
+Portal::~Portal() {
+    glDeleteVertexArrays(1, &contentVAO);
+    glDeleteBuffers(1, &contentVBO);
 }
 
 void Portal::init(Scene *scene) {
@@ -243,22 +283,72 @@ glm::vec4 Portal::getPlaneEquation() {
     return glm::vec4(normal, d);
 }
 
-void Portal::draw(Shader &shader) {
-    glActiveTexture(GL_TEXTURE10);
-    glBindTexture(GL_TEXTURE_2D, frameBuffer[currentBuffer]->GetTextureID());
-    shader.setInt("reflectionTexture", 10);
+void Portal::draw(Shader &portalShader, Shader &shader) {
+    drawBuffer(currentBuffer, portalShader);
+    DrawFrame(shader);
+}
 
-    GameObject::draw(shader);
-    //TODO:draw a frame to recognize different portals
+void Portal::drawPrev(Shader &portalShader, Shader &shader) {
+    drawBuffer((currentBuffer + 1) % 2, portalShader);
+    DrawFrame(shader);
+}
+
+void Portal::DrawFrame(Shader &shader) {
+    shader.use();
+    shader.setBool("useAlphaTest", true);
+    Texture *frameTex = (type == PORTAL_A) ? frameTextureA.get() : frameTextureB.get();
+    if (frameTex) {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, frameTex->ID);
+        shader.setInt("material.texture_diffuse1", 0);
+
+        // Set material properties for frame
+        shader.setVec3("material.ambientColor", glm::vec3(1.0f));
+        shader.setVec3("material.diffuseColor", glm::vec3(1.0f));
+        shader.setVec3("material.specularColor", glm::vec3(1.0f));
+        shader.setFloat("material.shininess", 32.0f);
+
+        // Calculate frame position: slightly forward along normal to avoid z-fighting
+        glm::mat4 rotationMat = glm::mat4(1.0f);
+        rotationMat = glm::rotate(rotationMat, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+        rotationMat = glm::rotate(rotationMat, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+        rotationMat = glm::rotate(rotationMat, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+        glm::vec3 normal = glm::normalize(glm::vec3(rotationMat * glm::vec4(0.0f, 0.0f, 1.0f, 0.0f)));
+        glm::vec3 framePos = position + normal * 0.01f;
+
+        glm::mat4 frameModel = glm::mat4(1.0f);
+        frameModel = glm::translate(frameModel, framePos);
+        frameModel = glm::rotate(frameModel, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+        frameModel = glm::rotate(frameModel, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+        frameModel = glm::rotate(frameModel, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+        frameModel = glm::scale(frameModel, scale + glm::vec3(0.2f));
+        shader.setMat4("model", frameModel);
+
+        glBindVertexArray(contentVAO);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glBindVertexArray(0);
+    }
+    shader.setBool("useAlphaTest", false);
     glActiveTexture(GL_TEXTURE0);
 }
 
-void Portal::drawPrev(Shader &shader) {
+void Portal::drawBuffer(int bufferIndex, Shader &portalShader) {
     glActiveTexture(GL_TEXTURE10);
-    glBindTexture(GL_TEXTURE_2D, frameBuffer[(currentBuffer + 1) % 2]->GetTextureID());
-    shader.setInt("reflectionTexture", 10);
+    glBindTexture(GL_TEXTURE_2D, frameBuffer[bufferIndex]->GetTextureID());
+    portalShader.use();
+    portalShader.setInt("reflectionTexture", 10);
 
-    GameObject::draw(shader);
+    // Calculate model matrix
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::translate(model, position);
+    model = glm::rotate(model, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+    model = glm::rotate(model, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::rotate(model, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+    model = glm::scale(model, scale);
 
-    glActiveTexture(GL_TEXTURE0);
+    portalShader.setMat4("model", model);
+
+    glBindVertexArray(contentVAO);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindVertexArray(0);
 }

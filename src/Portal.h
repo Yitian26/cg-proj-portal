@@ -9,9 +9,18 @@
 #include <memory>
 #include <array>
 
+enum portalType {
+    PORTAL_A,
+    PORTAL_B
+};
+
 class Portal : public GameObject {
 public:
-    Portal(Model *model, int width, int height, glm::vec3 pos = glm::vec3(0.0f), glm::vec3 rot = glm::vec3(0.0f), glm::vec3 scale = glm::vec3(1.0f));
+    bool isActive = true;
+    portalType type = PORTAL_A;
+
+    Portal(int width, int height, glm::vec3 pos = glm::vec3(0.0f), glm::vec3 rot = glm::vec3(0.0f), glm::vec3 scale = glm::vec3(1.0f));
+    ~Portal();
 
     void setLinkedPortal(Portal *portal) { linkedPortal = portal; };
     Portal *getLinkedPortal() { return linkedPortal; };
@@ -31,9 +40,13 @@ public:
     // Returns the portal plane equation (Ax + By + Cz + D = 0) in World Space
     glm::vec4 getPlaneEquation();
 
-    void draw(Shader &shader) override;
+    void draw(Shader &portalShader, Shader &shader);
 
-    void drawPrev(Shader &shader);
+    void drawPrev(Shader &portalShader, Shader &shader);
+
+    void drawBuffer(int bufferIndex,Shader &portalShader);
+
+    void DrawFrame(Shader &shader);
 
     void createFrames(Model *cubeModel, float thickness = 0.05f, float depth = 0.1f);
     void registerFramesPhysics(struct Scene *scene, uint32_t collisionMask = COLLISION_MASK_PORTALFRAME);
@@ -44,10 +57,11 @@ public:
 private:
     std::unique_ptr<FrameBuffer> frameBuffer[2];
     int currentBuffer = 0;
-    bool isActive = true;
     Portal *linkedPortal;
     Trigger *nearTrigger;
     Trigger *teleportTrigger;
     GameObject *onObject = nullptr;
     std::array<std::unique_ptr<GameObject>, 4> frames; // 0:top,1:bottom,2:left,3:right
+    unsigned int contentVAO, contentVBO;
+    std::unique_ptr<Texture> frameTextureA, frameTextureB;
 };

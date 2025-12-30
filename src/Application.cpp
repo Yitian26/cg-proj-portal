@@ -69,7 +69,7 @@ bool Application::initialize() {
 
     // --- Initialize Player ---
     scene->player = std::make_unique<Player>(glm::vec3(0.0f, 20.0f, 0.0f));
-    scene->lightPos = glm::vec3(5.0f, 5.0f, 5.0f);
+    scene->lightPos = glm::vec3(0.0f, 15.0f, 0.0f);
 
     // --- Load Resources ---
     auto cubeModel = std::make_unique<Model>("resources/obj/wall/cube.obj");
@@ -81,18 +81,20 @@ bool Application::initialize() {
     scene->addModelResource("portal_gun", std::move(portal_gunModel));
 
     // --- Portal A ---
-    scene->portalA = std::make_unique<Portal>(scene->modelResources["cube"].get(), width, height);
+    scene->portalA = std::make_unique<Portal>(width, height);
     scene->portalA->position = glm::vec3(100.0f, 1.0f, 101.0f);
-    scene->portalA->scale = glm::vec3(1.0f, 1.6f, 0.005f);
+    scene->portalA->scale = glm::vec3(0.8f, 1.4f, 0.005f);
     scene->portalA->name = "PortalA";
+    scene->portalA->type = PORTAL_A;
     scene->portalA->init(scene.get());
 
     // --- Portal B ---
-    scene->portalB = std::make_unique<Portal>(scene->modelResources["cube"].get(), width, height);
+    scene->portalB = std::make_unique<Portal>(width, height);
     scene->portalB->position = glm::vec3(100.0f, 0.0f, 100.0f);
     scene->portalB->rotation = glm::vec3(0.0f, 180.0f, 0.0f);
-    scene->portalB->scale = glm::vec3(1.0f, 1.6f, 0.005f);
+    scene->portalB->scale = glm::vec3(0.8f, 1.4f, 0.005f);
     scene->portalB->name = "PortalB";
+    scene->portalB->type = PORTAL_B;
     scene->portalB->init(scene.get());
 
     // --- Link Portals ---

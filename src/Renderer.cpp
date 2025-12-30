@@ -84,7 +84,11 @@ void Renderer::renderPortal(Scene &scene, Portal *portal, glm::mat4 view, const 
         portalShader->use();
         portalShader->setMat4("projection", obliqueProjection);
         portalShader->setMat4("view", transformedCam);
-        portal->drawPrev(*portalShader);// render the previous frame texture on the portal surface
+        auto shader = shaderCache["default"].get();
+        shader->use();
+        shader->setMat4("projection", obliqueProjection);
+        shader->setMat4("view", transformedCam);
+        portal->drawPrev(*portalShader, *shader);// render the previous frame texture on the portal surface
         portalShader->unuse();
     }
     portal->endRender(width, height);
@@ -109,19 +113,19 @@ void Renderer::render(Scene &scene, Camera &camera) {
     portalShader->use();
     portalShader->setMat4("projection", projection);
     portalShader->setMat4("view", view);
-    if (scene.portalA) scene.portalA->draw(*portalShader);
-    if (scene.portalB) scene.portalB->draw(*portalShader);
-
-    // 4. Draw Portal Gun
     auto shader = shaderCache["default"].get();
     shader->use();
     shader->setMat4("projection", projection);
     shader->setMat4("view", view);
+    if (scene.portalA) scene.portalA->draw(*portalShader, *shader);
+    if (scene.portalB) scene.portalB->draw(*portalShader, *shader);
 
+    
     for (auto &pair : scene.triggers) {
         pair.second->drawOBBDebug(*shader);
     }
-
+    
+    // 4. Draw Portal Gun
     if (scene.portalGun) scene.portalGun->draw(*shader);
 
     // Draw HUD

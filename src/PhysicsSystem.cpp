@@ -35,7 +35,7 @@ void PhysicsSystem::update(float dt) {
             // Raycast downward to detect ground
             glm::vec3 rayOrigin = obj.gameObject->position;
             glm::vec3 rayDirection = glm::vec3(0.0f, -1.0f, 0.0f); // Down
-            float rayLength = obj.collider->max.y - obj.collider->min.y + 0.1f; // Slightly more than collider height
+            float rayLength = (obj.collider->max.y - obj.collider->min.y) * obj.gameObject->scale.y + 0.1f; // Slightly more than collider height
             RaycastHit hit = raycast(rayOrigin, rayDirection, rayLength);
             obj.rigidBody->isOnGround = hit.hit;
         } else {
@@ -99,7 +99,7 @@ void PhysicsSystem::integrate(PhysicsObject &obj, float dt) {
     rb->velocity += acc * dt;
 
     // Apply Damping/Friction
-    float dampingFactor = rb->isOnGround ? rb->friction : 0.1f; // Ground friction vs air resistance
+    float dampingFactor = rb->isOnGround ? rb->friction : 0.05f; // Ground friction vs air resistance
     rb->velocity *= (1.0f - dt * dampingFactor);
 
     rb->velocity.y = std::max(rb->velocity.y, -40.0f);

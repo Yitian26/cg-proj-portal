@@ -6,7 +6,7 @@
 #include <map>
 
 
-Model::Model(std::string const &path, bool gamma) : gammaCorrection(gamma) {
+Model::Model(std::string const &path) {
     minBound = glm::vec3(std::numeric_limits<float>::max());
     maxBound = glm::vec3(std::numeric_limits<float>::lowest());
     loadModel(path);
