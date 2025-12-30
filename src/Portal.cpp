@@ -224,8 +224,12 @@ void Portal::checkRaycast(RaycastHit result, glm::vec3 playerRight) {
         }
         auto portalUp = glm::cross(playerRight, result.normal);
         float roll = 0.0f;
-        if (abs(portalUp.y) <= 1e-5) {//only roll when on floor
-            roll = glm::degrees(std::atan2(portalUp.x, portalUp.z));
+        if (abs(portalUp.y) <= 1e-5) {//only roll when on floor/ceil
+            if (result.normal.y > 0) {
+                roll = glm::degrees(std::atan2(portalUp.x, portalUp.z));
+            } else { //ceil
+                roll = -glm::degrees(std::atan2(portalUp.x, portalUp.z));
+            }
         }
         rotation = glm::vec3(pitch, yaw, roll);
 
