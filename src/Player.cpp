@@ -86,13 +86,13 @@ void Player::processInput(const InputManager &input, Scene *scene, float dt) {
         } else {
             scene->portalGun->fire();
             auto result = scene->physicsSystem->raycast(camera.Position, camera.Front, 100.0f);
-            scene->portalA->checkRaycast(result);
+            scene->portalA->checkRaycast(result,camera.Right);
         }
     }
     if (input.isMousePressed(GLFW_MOUSE_BUTTON_RIGHT) && !isGrabbing) {
         scene->portalGun->fire();
         auto result = scene->physicsSystem->raycast(camera.Position, camera.Front, 100.0f);
-        scene->portalB->checkRaycast(result);
+        scene->portalB->checkRaycast(result,camera.Right);
     }
 
     // Roll recovery after teleport

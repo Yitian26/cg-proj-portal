@@ -29,7 +29,7 @@ public:
     Trigger *getNearTrigger() { return nearTrigger; }
 
     void init(struct Scene *scene);
-    void checkRaycast(RaycastHit result);
+    void checkRaycast(RaycastHit result, glm::vec3 playerRight);
 
     // Prepares the framebuffer
     void beginRender();

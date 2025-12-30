@@ -132,7 +132,7 @@ void Portal::init(Scene *scene) {
 
             // Start roll recovery
             player->initialRoll = roll;
-            player->rollRecoveryDuration = abs(roll) / 180.0f * 0.5f + 0.4f;
+            player->rollRecoveryDuration = abs(roll) / 180.0f * 0.6f + 0.2f;
             player->rollRecoveryTimer = player->rollRecoveryDuration;
 
             // Also move camera position to follow player properly
@@ -204,7 +204,7 @@ void Portal::updateFramesTransform() {
     }
 }
 
-void Portal::checkRaycast(RaycastHit result) {
+void Portal::checkRaycast(RaycastHit result, glm::vec3 playerRight) {
     if (result.hit) {
         if (!result.object->canOpenPortal) {
             return;
@@ -214,15 +214,21 @@ void Portal::checkRaycast(RaycastHit result) {
         }
         result.object->setCollisionMask(COLLISION_MASK_PORTALON);
         onObject = result.object;
+
+        //set position and rotation
         position = result.point + result.normal * 0.05f;
-        // Align portal normal (0,0,1) to hit normal
-        float ny = glm::clamp(result.normal.y, -1.0f, 1.0f);
-        float pitch = -glm::degrees(std::asin(ny));
+        float pitch = -glm::degrees(std::asin(glm::clamp(result.normal.y, -1.0f, 1.0f)));
         float yaw = 0.0f;
         if (glm::abs(result.normal.x) > 1e-5 || glm::abs(result.normal.z) > 1e-5) {
             yaw = glm::degrees(std::atan2(result.normal.x, result.normal.z));
         }
-        rotation = glm::vec3(pitch, yaw, 0.0f);
+        auto portalUp = glm::cross(playerRight, result.normal);
+        float roll = 0.0f;
+        if (abs(portalUp.y) <= 1e-5) {//only roll when on floor
+            roll = glm::degrees(std::atan2(portalUp.x, portalUp.z));
+        }
+        rotation = glm::vec3(pitch, yaw, roll);
+
         // move trigger
         glm::mat4 rotationMat = glm::mat4(1.0f);
         rotationMat = glm::rotate(rotationMat, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
