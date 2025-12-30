@@ -24,11 +24,16 @@ public:
     GameObject *grabbedObject = nullptr;
 
     // Configuration
-    float moveSpeed = 4.0f;
-    float jumpForce = 4.0f;
-    float gravity = 9.8f;
-    float height = 2.0f;
-    float radius = 0.25f;
+    const float moveSpeed = 4.0f;
+    const float jumpForce = 4.0f;
+    const float gravity = 9.8f;
+    const float height = 2.0f;
+    const float radius = 0.25f;
+
+    // Roll recovery after teleport
+    float rollRecoveryTimer = 0.0f;
+    float rollRecoveryDuration = 0.8f; // seconds
+    float initialRoll = 0.0f;
 
 
     // Helper to get current position (feet)

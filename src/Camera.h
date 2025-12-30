@@ -33,6 +33,7 @@ public:
     // euler Angles
     float Yaw;
     float Pitch;
+    float Roll;
     // camera options
     float MovementSpeed;
     float MouseSensitivity;
@@ -55,7 +56,6 @@ public:
     // processes input received from a mouse scroll-wheel event. Only requires input on the vertical wheel-axis
     void ProcessMouseScroll(float yoffset);
 
-private:
     // calculates the front vector from the Camera's (updated) Euler Angles
     void updateCameraVectors();
 };

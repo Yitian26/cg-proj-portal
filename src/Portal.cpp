@@ -104,15 +104,36 @@ void Portal::init(Scene *scene) {
             glm::vec3 newFront = glm::normalize(glm::vec3(newFront4));
             player->camera.Front = newFront;
 
-            // Recompute yaw/pitch from new front vector. Use atan2 to get yaw consistent with Camera implementation.
+            // Transform Up vector
+            glm::vec4 relUp = glm::inverse(srcRot) * glm::vec4(player->camera.Up, 0.0f);
+            glm::vec4 newUp4 = dstRot * (rot180 * relUp);
+            glm::vec3 newUp = glm::normalize(glm::vec3(newUp4));
+            player->camera.Up = newUp;
+
+            // Transform Right vector
+            glm::vec4 relRight = glm::inverse(srcRot) * glm::vec4(player->camera.Right, 0.0f);
+            glm::vec4 newRight4 = dstRot * (rot180 * relRight);
+            glm::vec3 newRight = glm::normalize(glm::vec3(newRight4));
+            player->camera.Right = newRight;
+
+            // Recompute yaw/pitch from new front vector
             float pitch = glm::degrees(glm::asin(glm::clamp(newFront.y, -1.0f, 1.0f)));
             float yaw = glm::degrees(std::atan2(newFront.z, newFront.x));
             player->camera.Yaw = yaw;
             player->camera.Pitch = pitch;
 
-            // Manually update Right and Up vectors (can't call private updateCameraVectors)
-            player->camera.Right = glm::normalize(glm::cross(player->camera.Front, player->camera.WorldUp));
-            player->camera.Up = glm::normalize(glm::cross(player->camera.Right, player->camera.Front));
+            // Calculate Roll from the new Up and Right
+            glm::vec3 right0 = glm::normalize(glm::cross(newFront, player->camera.WorldUp));
+            float cosRoll = glm::dot(newRight, right0);
+            glm::vec3 crossVec = glm::cross(right0, newRight);
+            float sinRoll = glm::dot(crossVec, newFront);
+            float roll = glm::degrees(atan2(sinRoll, cosRoll));
+            player->camera.Roll = roll;
+
+            // Start roll recovery
+            player->initialRoll = roll;
+            player->rollRecoveryDuration = abs(roll) / 180.0f * 0.5f + 0.4f;
+            player->rollRecoveryTimer = player->rollRecoveryDuration;
 
             // Also move camera position to follow player properly
             player->camera.Position = player->position + glm::vec3(0.0f, player->height * 0.4f, 0.0f);
@@ -257,7 +278,6 @@ glm::mat4 Portal::getTransformedView(glm::mat4 view) {
     glm::mat4 camInLocal = glm::inverse(myModel) * camTransform;
 
     // Rotate 180 degrees around Y (to face out)
-
     glm::mat4 rotation180 = glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 destView = otherModel * rotation180 * glm::inverse(myModel) * camTransform;
 

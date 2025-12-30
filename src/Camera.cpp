@@ -5,6 +5,7 @@ Camera::Camera(glm::vec3 position, glm::vec3 up, float yaw, float pitch) : Front
     WorldUp = up;
     Yaw = yaw;
     Pitch = pitch;
+    Roll = 0.0f;
     updateCameraVectors();
 }
 
@@ -13,6 +14,7 @@ Camera::Camera(float posX, float posY, float posZ, float upX, float upY, float u
     WorldUp = glm::vec3(upX, upY, upZ);
     Yaw = yaw;
     Pitch = pitch;
+    Roll = 0.0f;
     updateCameraVectors();
 }
 
@@ -68,6 +70,11 @@ void Camera::updateCameraVectors() {
     front.y = sin(glm::radians(Pitch));
     front.z = sin(glm::radians(Yaw)) * cos(glm::radians(Pitch));
     Front = glm::normalize(front);
-    Right = glm::normalize(glm::cross(Front, WorldUp));
-    Up = glm::normalize(glm::cross(Right, Front));
+    // calculate the new Right and Up vectors
+    glm::vec3 right = glm::normalize(glm::cross(Front, WorldUp));
+    glm::vec3 up = glm::normalize(glm::cross(right, Front));
+    // apply roll rotation around Front axis
+    glm::mat4 rollRot = glm::rotate(glm::mat4(1.0f), glm::radians(Roll), Front);
+    Right = glm::normalize(glm::vec3(rollRot * glm::vec4(right, 0.0f)));
+    Up = glm::normalize(glm::vec3(rollRot * glm::vec4(up, 0.0f)));
 }

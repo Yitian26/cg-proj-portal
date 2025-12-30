@@ -18,7 +18,7 @@ Player::Player(glm::vec3 startPos)
     rigidBody->collisionMask = COLLISION_MASK_DEFAULT;
 
     // Initialize collider (centered on position)
-    glm::vec3 min = position + glm::vec3(-radius, -height *  0.5f, -radius);
+    glm::vec3 min = position + glm::vec3(-radius, -height * 0.5f, -radius);
     glm::vec3 max = position + glm::vec3(radius, height * 0.5f, radius);
     collider = std::make_unique<AABB>(min, max);
 
@@ -26,7 +26,7 @@ Player::Player(glm::vec3 startPos)
     camera.Position = position + glm::vec3(0.0f, height * 0.4f, 0.0f);
 }
 
-void Player::processInput(const InputManager &input, Scene *scene,float dt) {
+void Player::processInput(const InputManager &input, Scene *scene, float dt) {
     glm::vec3 targetVel(0.0f);
 
     glm::vec3 forward = camera.Front;
@@ -79,14 +79,29 @@ void Player::processInput(const InputManager &input, Scene *scene,float dt) {
 
     //respawn portal
     if (input.isMousePressed(GLFW_MOUSE_BUTTON_LEFT)) {
-        scene->portalGun->fire();
-        auto result = scene->physicsSystem->raycast(camera.Position, camera.Front, 100.0f);
-        scene->portalA->checkRaycast(result);
+        if (isGrabbing) {
+            glm::vec3 pushForce = camera.Front * 10.0f;
+            grabbedObject->rigidBody->addForce(pushForce);
+            isGrabbing = false;
+        } else {
+            scene->portalGun->fire();
+            auto result = scene->physicsSystem->raycast(camera.Position, camera.Front, 100.0f);
+            scene->portalA->checkRaycast(result);
+        }
     }
-    if (input.isMousePressed(GLFW_MOUSE_BUTTON_RIGHT)) {
+    if (input.isMousePressed(GLFW_MOUSE_BUTTON_RIGHT) && !isGrabbing) {
         scene->portalGun->fire();
         auto result = scene->physicsSystem->raycast(camera.Position, camera.Front, 100.0f);
         scene->portalB->checkRaycast(result);
+    }
+
+    // Roll recovery after teleport
+    if (rollRecoveryTimer > 0) {
+        rollRecoveryTimer -= dt;
+        if (rollRecoveryTimer < 0) rollRecoveryTimer = 0;
+        float t = rollRecoveryTimer / rollRecoveryDuration;
+        camera.Roll = initialRoll * t;
+        camera.updateCameraVectors();
     }
 }
 
@@ -138,7 +153,7 @@ void Player::update(float dt, PhysicsSystem *physicsSystem) {
     }
 
     if (isGrabbing && grabbedObject) {
-        glm::vec3 targetPos = position + camera.Front * 2.0f + camera.Right * 0.5f + glm::vec3(0.0f, 0.3f, 0.0f);
+        glm::vec3 targetPos = position + camera.Front * 2.0f + glm::vec3(0.0f, height * 0.5f, 0.0f);
         if (glm::length(targetPos - grabbedObject->position) > 3.0f) {
             // Too far, release
             isGrabbing = false;
