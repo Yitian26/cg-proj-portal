@@ -46,6 +46,7 @@ private:
         glm::vec3 diffuseColor = glm::vec3(1.0f);
         glm::vec3 specularColor = glm::vec3(0.5f);
         float shininess = 32.0f;
+        glm::vec2 textureScale = glm::vec2(1.0f, 1.0f);
     };
 
     std::map<std::string, Material> materials;

@@ -8,6 +8,8 @@
 #include "PhysicsSystem.h"
 #include "Player.h"
 #include "Trigger.h"
+#include "Button.h"
+#include "Flip.h"
 
 #include <vector>
 #include <memory>
@@ -103,6 +105,53 @@ struct Scene {
             }
             for (auto &objPair : objects) {
                 pair.second->check(objPair.second.get());
+            }
+        }
+
+        auto button_flip = objects.find("button_flip");
+        if (button_flip != objects.end()) {
+            Button *btn = dynamic_cast<Button *>(button_flip->second.get());
+            if (btn && btn->getIsPressed()) {
+                auto flipWall = objects.find("flip_wall");
+                if (flipWall != objects.end()) {
+                    Flip *flip = dynamic_cast<Flip *>(flipWall->second.get());
+                    if (flip) {
+                        flip->flip();
+                    }
+                }
+            } else if (btn && btn->getIsReleased()) {
+                auto flipWall = objects.find("flip_wall");
+                if (flipWall != objects.end()) {
+                    Flip *flip = dynamic_cast<Flip *>(flipWall->second.get());
+                    if (flip) {
+                        flip->reset();
+                    }
+                }
+            }
+        }
+
+        auto flip_wall = objects.find("flip_wall");
+        if (flip_wall != objects.end()) {
+            Flip *flip = dynamic_cast<Flip *>(flip_wall->second.get());
+            if (flip && flip->getIsRotating()) {
+                if (portalA->getOnObject() == flip) {
+                    portalA->setOnObject(nullptr);
+                    portalA->isActive = false;
+                    portalA->position = glm::vec3(100.0f, 0.0f, 100.0f);
+                    portalA->getNearTrigger()->isActive = false;
+                    portalA->getTeleportTrigger()->isActive = false;
+                    portalB->getNearTrigger()->isActive = false;
+                    portalB->getTeleportTrigger()->isActive = false;
+                }
+                if (portalB->getOnObject() == flip) {
+                    portalB->setOnObject(nullptr);
+                    portalB->isActive = false;
+                    portalB->position = glm::vec3(100.0f, 0.0f, 100.0f);
+                    portalA->getNearTrigger()->isActive = false;
+                    portalA->getTeleportTrigger()->isActive = false;
+                    portalB->getNearTrigger()->isActive = false;
+                    portalB->getTeleportTrigger()->isActive = false;
+                }
             }
         }
     }

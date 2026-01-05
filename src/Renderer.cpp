@@ -121,9 +121,9 @@ void Renderer::render(Scene &scene, Camera &camera) {
     if (scene.portalB) scene.portalB->draw(*portalShader, *shader);
 
     
-    for (auto &pair : scene.triggers) {
-        pair.second->drawOBBDebug(*shader);
-    }
+    // for (auto &pair : scene.triggers) {
+    //     pair.second->drawOBBDebug(*shader);
+    // }
     
     // 4. Draw Portal Gun
     if (scene.portalGun) scene.portalGun->draw(*shader);

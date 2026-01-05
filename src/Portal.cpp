@@ -61,20 +61,22 @@ void Portal::init(Scene *scene) {
     nearTrigger->onExit = [](GameObject *obj) {
         obj->setCollisionMask(COLLISION_MASK_DEFAULT);
         };
+    nearTrigger->isActive = false;
     scene->addTrigger(name + "NearTrigger", std::unique_ptr<Trigger>(nearTrigger));
     teleportTrigger = new Trigger(glm::vec3(100.0f), glm::vec3(101.0f));
     teleportTrigger->onEnter = [this](GameObject *obj) {
         if (!linkedPortal || !obj || !obj->isTeleportable) return;
 
         // Build rotation matrices for source (this) and destination (linkedPortal)
+        // Use Ry * Rx * Rz order to match checkRaycast logic and avoid gimbal lock
         glm::mat4 srcRot = glm::mat4(1.0f);
-        srcRot = glm::rotate(srcRot, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
         srcRot = glm::rotate(srcRot, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+        srcRot = glm::rotate(srcRot, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
         srcRot = glm::rotate(srcRot, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 
         glm::mat4 dstRot = glm::mat4(1.0f);
-        dstRot = glm::rotate(dstRot, glm::radians(linkedPortal->rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
         dstRot = glm::rotate(dstRot, glm::radians(linkedPortal->rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+        dstRot = glm::rotate(dstRot, glm::radians(linkedPortal->rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
         dstRot = glm::rotate(dstRot, glm::radians(linkedPortal->rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 
         // Add a 180 degree rotation around the portal's local Y to map facing correctly.
@@ -139,6 +141,7 @@ void Portal::init(Scene *scene) {
             player->camera.Position = player->position + glm::vec3(0.0f, player->height * 0.4f, 0.0f);
         }
         };
+    teleportTrigger->isActive = false;
     scene->addTrigger(name + "TeleportTrigger", std::unique_ptr<Trigger>(teleportTrigger));
 }
 
@@ -165,10 +168,10 @@ void Portal::registerFramesPhysics(Scene *scene, uint32_t collisionMask) {
 }
 
 void Portal::updateFramesTransform() {
-    // Compute axes from portal rotation
+    // Compute axes from portal rotation (Ry * Rx * Rz)
     glm::mat4 rotationMat = glm::mat4(1.0f);
-    rotationMat = glm::rotate(rotationMat, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
     rotationMat = glm::rotate(rotationMat, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+    rotationMat = glm::rotate(rotationMat, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
     rotationMat = glm::rotate(rotationMat, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 
     glm::vec3 axes[3];
@@ -235,8 +238,8 @@ void Portal::checkRaycast(RaycastHit result, glm::vec3 playerRight) {
 
         // move trigger
         glm::mat4 rotationMat = glm::mat4(1.0f);
-        rotationMat = glm::rotate(rotationMat, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
         rotationMat = glm::rotate(rotationMat, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+        rotationMat = glm::rotate(rotationMat, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
         rotationMat = glm::rotate(rotationMat, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 
         glm::vec3 axes[3];
@@ -251,6 +254,13 @@ void Portal::checkRaycast(RaycastHit result, glm::vec3 playerRight) {
         teleportTrigger->setFromCenterAxesExtents(position - result.normal * 0.4f, axes, glm::vec3(halfWidth, halfHeight, 0.46f));
         // Update frames to follow portal
         updateFramesTransform();
+        isActive = true;
+        if (linkedPortal->isActive) {
+            nearTrigger->isActive = true;
+            teleportTrigger->isActive = true;
+            linkedPortal->nearTrigger->isActive = true;
+            linkedPortal->teleportTrigger->isActive = true;
+        }
     }
 }
 
@@ -271,14 +281,14 @@ glm::mat4 Portal::getTransformedView(glm::mat4 view) {
 
     glm::mat4 myModel = glm::mat4(1.0f);
     myModel = glm::translate(myModel, position);
-    myModel = glm::rotate(myModel, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
     myModel = glm::rotate(myModel, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+    myModel = glm::rotate(myModel, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
     myModel = glm::rotate(myModel, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 
     glm::mat4 otherModel = glm::mat4(1.0f);
     otherModel = glm::translate(otherModel, linkedPortal->position);
-    otherModel = glm::rotate(otherModel, glm::radians(linkedPortal->rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
     otherModel = glm::rotate(otherModel, glm::radians(linkedPortal->rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+    otherModel = glm::rotate(otherModel, glm::radians(linkedPortal->rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
     otherModel = glm::rotate(otherModel, glm::radians(linkedPortal->rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 
     // Calculate Relative Transform (Camera -> Me)
@@ -299,8 +309,8 @@ glm::vec4 Portal::getPlaneEquation() {
 
     glm::mat4 modelMatrix = glm::mat4(1.0f);
     modelMatrix = glm::translate(modelMatrix, linkedPortal->position);
-    modelMatrix = glm::rotate(modelMatrix, glm::radians(linkedPortal->rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
     modelMatrix = glm::rotate(modelMatrix, glm::radians(linkedPortal->rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+    modelMatrix = glm::rotate(modelMatrix, glm::radians(linkedPortal->rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
     modelMatrix = glm::rotate(modelMatrix, glm::radians(linkedPortal->rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 
     glm::vec3 normal = glm::vec3(modelMatrix * glm::vec4(0.0f, 0.0f, 1.0f, 0.0f));
@@ -340,16 +350,16 @@ void Portal::DrawFrame(Shader &shader) {
 
         // Calculate frame position: slightly forward along normal to avoid z-fighting
         glm::mat4 rotationMat = glm::mat4(1.0f);
-        rotationMat = glm::rotate(rotationMat, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
         rotationMat = glm::rotate(rotationMat, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+        rotationMat = glm::rotate(rotationMat, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
         rotationMat = glm::rotate(rotationMat, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
         glm::vec3 normal = glm::normalize(glm::vec3(rotationMat * glm::vec4(0.0f, 0.0f, 1.0f, 0.0f)));
         glm::vec3 framePos = position + normal * 0.01f;
 
         glm::mat4 frameModel = glm::mat4(1.0f);
         frameModel = glm::translate(frameModel, framePos);
-        frameModel = glm::rotate(frameModel, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
         frameModel = glm::rotate(frameModel, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+        frameModel = glm::rotate(frameModel, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
         frameModel = glm::rotate(frameModel, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
         frameModel = glm::scale(frameModel, scale + glm::vec3(0.2f));
         shader.setMat4("model", frameModel);
@@ -363,6 +373,7 @@ void Portal::DrawFrame(Shader &shader) {
 }
 
 void Portal::drawBuffer(int bufferIndex, Shader &portalShader) {
+    if (!isActive || !linkedPortal->isActive) return;
     glActiveTexture(GL_TEXTURE10);
     glBindTexture(GL_TEXTURE_2D, frameBuffer[bufferIndex]->GetTextureID());
     portalShader.use();
@@ -371,8 +382,8 @@ void Portal::drawBuffer(int bufferIndex, Shader &portalShader) {
     // Calculate model matrix
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::translate(model, position);
-    model = glm::rotate(model, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
     model = glm::rotate(model, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::rotate(model, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
     model = glm::rotate(model, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
     model = glm::scale(model, scale);
 

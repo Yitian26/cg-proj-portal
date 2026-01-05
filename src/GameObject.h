@@ -18,9 +18,9 @@ public:
     bool isTeleportable = false;
     bool canOpenPortal = false;
     // Transform attributes
-    glm::vec3 position;
-    glm::vec3 rotation; // Euler angles in degrees
-    glm::vec3 scale;
+    glm::vec3 position = glm::vec3(0.0f);
+    glm::vec3 rotation = glm::vec3(0.0f); // Euler angles in degrees
+    glm::vec3 scale = glm::vec3(1.0f);
 
     // Model reference (does not own the model)
     Model *model;

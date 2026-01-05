@@ -28,6 +28,13 @@ public:
     void setNearTrigger(Trigger *trigger) { nearTrigger = trigger; }
     Trigger *getNearTrigger() { return nearTrigger; }
 
+    void setTeleportTrigger(Trigger *trigger) { teleportTrigger = trigger; }
+    Trigger *getTeleportTrigger() { return teleportTrigger; }
+
+    GameObject *getOnObject() { return onObject; }
+    void setOnObject(GameObject *obj) { onObject = obj; }
+
+
     void init(struct Scene *scene);
     void checkRaycast(RaycastHit result, glm::vec3 playerRight);
 

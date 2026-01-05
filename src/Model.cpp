@@ -62,9 +62,31 @@ void Model::loadMTL(std::string const &path) {
             ss >> shininess;
             materials[currentMtlName].shininess = shininess;
         } else if (prefix == "map_Kd") {
-            std::string textureFile;
-            ss >> textureFile;
-            materials[currentMtlName].diffuseMap = textureFile;
+            std::string token;
+            while (ss >> token) {
+                if (token == "-s") {
+                    std::string uStr, vStr, wStr;
+                    ss >> uStr >> vStr >> wStr;
+                    try {
+                        float u = std::stof(uStr);
+                        float v = std::stof(vStr);
+                        materials[currentMtlName].textureScale = glm::vec2(u, v);
+                    }
+                    catch (...) {}
+                } else if (token == "-o") {
+                    std::string temp;
+                    ss >> temp >> temp >> temp; // Skip u v w
+                } else if (token == "-mm") {
+                    std::string temp;
+                    ss >> temp >> temp; // Skip base gain
+                } else if (token == "-bm") {
+                    std::string temp;
+                    ss >> temp; // Skip mult
+                } else {
+                    materials[currentMtlName].diffuseMap = token;
+                    break;
+                }
+            }
         }
     }
 }
@@ -106,6 +128,14 @@ void Model::loadModel(std::string const &path) {
                 diffuse = materials[currentMaterial].diffuseColor;
                 specular = materials[currentMaterial].specularColor;
                 shininess = materials[currentMaterial].shininess;
+
+                glm::vec2 scale = materials[currentMaterial].textureScale;
+                if (scale.x != 1.0f || scale.y != 1.0f) {
+                    for (auto &v : vertices) {
+                        v.TexCoords.x *= scale.x;
+                        v.TexCoords.y *= scale.y;
+                    }
+                }
             }
             meshes.push_back(Mesh(vertices, indices, textures, ambient, diffuse, specular, shininess));
             vertices.clear();

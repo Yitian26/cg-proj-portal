@@ -3,6 +3,7 @@
 #include "Shader.h"
 
 #include <unordered_set>
+#include <functional>
 
 #include <glm/glm.hpp>
 

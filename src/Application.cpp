@@ -1,4 +1,6 @@
+#include "Button.h"
 #include "Application.h"
+#include "Flip.h"
 #include "PortalGun.h"
 #include "InputManager.h"
 #include "Trigger.h"
@@ -68,17 +70,13 @@ bool Application::initialize() {
     input.initialize(window);
 
     // --- Initialize Player ---
-    scene->player = std::make_unique<Player>(glm::vec3(0.0f, 20.0f, 0.0f));
+    scene->player = std::make_unique<Player>(glm::vec3(0.0f, 0.0f, 0.0f));
     scene->lightPos = glm::vec3(0.0f, 15.0f, 0.0f);
 
     // --- Load Resources ---
-    auto cubeModel = std::make_unique<Model>("resources/obj/wall/cube.obj");
-    auto portal_cubeModel = std::make_unique<Model>("resources/obj/portal_cube/portal_cube.obj");
-    auto portal_gunModel = std::make_unique<Model>("resources/obj/portal_gun/portal_gun.obj");
-
-    scene->addModelResource("cube", std::move(cubeModel));
-    scene->addModelResource("portal_cube", std::move(portal_cubeModel));
-    scene->addModelResource("portal_gun", std::move(portal_gunModel));
+    scene->addModelResource("portal_gun", std::make_unique<Model>("resources/obj/portal_gun/portal_gun.obj"));
+    scene->addModelResource("cube", std::make_unique<Model>("resources/obj/wall/cube.obj"));
+    scene->addModelResource("portal_cube", std::make_unique<Model>("resources/obj/portal_cube/portal_cube.obj"));
 
     // --- Portal A ---
     scene->portalA = std::make_unique<Portal>(width, height);
@@ -86,6 +84,7 @@ bool Application::initialize() {
     scene->portalA->scale = glm::vec3(0.8f, 1.4f, 0.005f);
     scene->portalA->name = "PortalA";
     scene->portalA->type = PORTAL_A;
+    scene->portalA->isActive = false;
     scene->portalA->init(scene.get());
 
     // --- Portal B ---
@@ -95,6 +94,7 @@ bool Application::initialize() {
     scene->portalB->scale = glm::vec3(0.8f, 1.4f, 0.005f);
     scene->portalB->name = "PortalB";
     scene->portalB->type = PORTAL_B;
+    scene->portalB->isActive = false;
     scene->portalB->init(scene.get());
 
     // --- Link Portals ---
@@ -129,48 +129,75 @@ bool Application::initialize() {
 
 void Application::createScene(int level) {
     (void *)level;
-    auto floor = std::make_unique<GameObject>(scene->modelResources["cube"].get());
-    floor->position = glm::vec3(0.0f, -2.0f, 0.0f);
-    floor->scale = glm::vec3(10.0f, 0.1f, 10.0f);
-    floor->canOpenPortal = true;
-    scene->addPhysics(floor.get(), true);
-    scene->addObject("floor", std::move(floor));
+    scene->addModelResource("banner", std::make_unique<Model>("resources/obj/level/banner.obj"));
+    scene->addModelResource("button_flip", std::make_unique<Model>("resources/obj/level/button_flip.obj"));
+    scene->addModelResource("button_goal", std::make_unique<Model>("resources/obj/level/button_goal.obj"));
+    scene->addModelResource("movable", std::make_unique<Model>("resources/obj/level/movable.obj"));
+    scene->addModelResource("wall1", std::make_unique<Model>("resources/obj/level/wall1.obj"));
+    scene->addModelResource("wall2", std::make_unique<Model>("resources/obj/level/wall2.obj"));
+    scene->addModelResource("wall3", std::make_unique<Model>("resources/obj/level/wall3.obj"));
+    scene->addModelResource("wall4_p", std::make_unique<Model>("resources/obj/level/wall4_p.obj"));
+    scene->addModelResource("wall5", std::make_unique<Model>("resources/obj/level/wall5.obj"));
+    scene->addModelResource("wall6_p", std::make_unique<Model>("resources/obj/level/wall6_p.obj"));
+    scene->addModelResource("wall7", std::make_unique<Model>("resources/obj/level/wall7.obj"));
+    scene->addModelResource("wall8", std::make_unique<Model>("resources/obj/level/wall8.obj"));
+    scene->addModelResource("wall9", std::make_unique<Model>("resources/obj/level/wall9.obj"));
+    scene->addModelResource("wall10", std::make_unique<Model>("resources/obj/level/wall10.obj"));
+    scene->addModelResource("wall11_p", std::make_unique<Model>("resources/obj/level/wall11_p.obj"));
+    scene->addModelResource("wall12_p", std::make_unique<Model>("resources/obj/level/wall12_p.obj"));
 
-    auto ceil = std::make_unique<GameObject>(scene->modelResources["cube"].get());
-    ceil->position = glm::vec3(5.0f, 5.0f, 5.0f);
-    ceil->scale = glm::vec3(5.0f, 0.1f, 5.0f);
-    ceil->canOpenPortal = true;
-    scene->addPhysics(ceil.get(), true);
-    scene->addObject("ceiling", std::move(ceil));
+    auto addStaticObj = [&](const std::string &name, const std::string &modelName, bool canPortal) {
+        auto obj = std::make_unique<GameObject>(scene->modelResources[modelName].get());
+        obj->isTeleportable = false;
+        obj->canOpenPortal = canPortal;
+        // Register physics on the object before moving it into the scene map
+        scene->addPhysics(obj.get(), true);
+        scene->addObject(name, std::move(obj));
+        };
 
-    auto backWall = std::make_unique<GameObject>(scene->modelResources["cube"].get());
-    backWall->position = glm::vec3(0.0f, 2.0f, -10.0f);
-    backWall->scale = glm::vec3(10.0f, 5.0f, 0.1f);
-    backWall->rotation = glm::vec3(-25.0f, 0.0f, 0.0f);
-    backWall->canOpenPortal = true;
-    scene->addPhysics(backWall.get(), true);
-    scene->addObject("backWall", std::move(backWall));
+    addStaticObj("banner", "banner", false);
+    addStaticObj("wall1", "wall1", false);
+    addStaticObj("wall2", "wall2", false);
+    addStaticObj("wall3", "wall3", false);
+    addStaticObj("wall4", "wall4_p", true);
+    addStaticObj("wall5", "wall5", false);
+    addStaticObj("wall6", "wall6_p", true);
+    addStaticObj("wall7", "wall7", false);
+    addStaticObj("wall8", "wall8", false);
+    addStaticObj("wall9", "wall9", false);
+    addStaticObj("wall10", "wall10", false);
+    addStaticObj("wall11", "wall11_p", true);
+    addStaticObj("wall12", "wall12_p", true);
 
-    auto leftWall = std::make_unique<GameObject>(scene->modelResources["cube"].get());
-    leftWall->position = glm::vec3(-10.0f, 3.0f, 0.0f);
-    leftWall->scale = glm::vec3(0.1f, 5.0f, 10.0f);
-    leftWall->canOpenPortal = true;
-    scene->addPhysics(leftWall.get(), true);
-    scene->addObject("leftWall", std::move(leftWall));
+    auto buttonFlip = std::make_unique<Button>(scene->modelResources["button_flip"].get(), glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(1.0f));
+    buttonFlip->isTeleportable = false;
+    buttonFlip->canOpenPortal = false;
+    scene->addTrigger("button_flip_trigger", buttonFlip->createTrigger());
+    scene->addPhysics(buttonFlip.get(), true);
+    scene->addObject("button_flip", std::move(buttonFlip));
 
-    auto frontWall = std::make_unique<GameObject>(scene->modelResources["cube"].get());
-    frontWall->position = glm::vec3(0.0f, 3.0f, 10.0f);
-    frontWall->scale = glm::vec3(10.0f, 5.0f, 0.1f);
-    frontWall->canOpenPortal = true;
-    scene->addPhysics(frontWall.get(), true);
-    scene->addObject("frontWall", std::move(frontWall));
+    auto flipWall = std::make_unique<Flip>(scene->modelResources["movable"].get(), glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(1.0f));
+    flipWall->isTeleportable = false;
+    flipWall->canOpenPortal = true;
+    flipWall->setPivot(glm::vec3(0.0f, 0.0f, 0.0f));
+    flipWall->setPosition(glm::vec3(-1.5f, 5.5f, -5.0f));
+    scene->addPhysics(flipWall.get(), true);
+    scene->addObject("flip_wall", std::move(flipWall));
 
-    auto fallingCube = std::make_unique<GameObject>(scene->modelResources["portal_cube"].get());
-    fallingCube->position = glm::vec3(0.0f, 30.0f, -5.0f);
-    fallingCube->setScaleToSizeX(0.7f);
-    fallingCube->isTeleportable = true;
-    scene->addPhysics(fallingCube.get(), false, 1.0f, 0.2f, 0.5f);
-    scene->addObject("fallingCube", std::move(fallingCube));
+    auto cube = std::make_unique<GameObject>(scene->modelResources["portal_cube"].get());
+    cube->isTeleportable = true;
+    cube->canOpenPortal = false;
+    cube->scale = glm::vec3(0.05f);
+    cube->position = glm::vec3(7.0f, -4.0f, -2.0f);
+    scene->addPhysics(cube.get(), false);
+    scene->addObject("portal_cube", std::move(cube));
+
+    auto button_goal = std::make_unique<Button>(scene->modelResources["button_goal"].get(), glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(1.0f));
+    button_goal->isTeleportable = false;
+    button_goal->canOpenPortal = false;
+    scene->addTrigger("button_goal_trigger", button_goal->createTrigger());
+    scene->addPhysics(button_goal.get(), true);
+    scene->addObject("button_goal", std::move(button_goal));
 }
 
 void Application::run() {
@@ -194,6 +221,14 @@ void Application::run() {
         // --- Logic Update ---
         Camera &activeCamera = getActiveCamera();
         scene->update(deltaTime, activeCamera);
+        auto button_goal = scene->objects.find("button_goal");
+        if (button_goal != scene->objects.end()) {
+            Button *btn = dynamic_cast<Button *>(button_goal->second.get());
+            if (btn && btn->getIsPressed()) {
+                //change window title to "You Win!"
+                glfwSetWindowTitle(window, "You Win!");
+            }
+        }
 
         // render
         renderer->render(*scene, activeCamera);
@@ -223,26 +258,11 @@ void Application::processInput(float deltaTime) {
         scene->player->processInput(input, scene.get(), deltaTime);
     }
 
-    Camera &cam = getActiveCamera();
-
-    if (input.isKeyDown(GLFW_KEY_G)) {
-        auto cube = scene->objects["fallingCube"].get();
-        if (cube && cube->rigidBody) cube->rigidBody->addForce(cam.Front * 50.0f);
-    }
-
-    if (input.isKeyPressed(GLFW_KEY_R)) {
-        auto cube = scene->objects["fallingCube"].get();
-        if (cube && cube->rigidBody) {
-            cube->position = glm::vec3(0.0f, 30.0f, -5.0f);
-            cube->rigidBody->velocity = glm::vec3(0.0f);
-            cube->rigidBody->clearForces();
-        }
-    }
-
     if (input.isKeyPressed(GLFW_KEY_T)) {
-        scene->player->position = glm::vec3(0.0f, 20.0f, 0.0f);
-        scene->player->rigidBody->velocity = glm::vec3(0.0f);
-        scene->player->rigidBody->clearForces();
+        if (scene->player) {
+            scene->player->position = glm::vec3(0.0f, 0.0f, 0.0f);
+            scene->player->rigidBody->velocity = glm::vec3(0.0f);
+        }
     }
 }
 
