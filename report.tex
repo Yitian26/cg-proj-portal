@@ -1,0 +1,803 @@
+% !TEX program = xelatex
+\documentclass[11pt,a4paper]{article}
+
+% ================= 页面与字体 =================
+\usepackage{geometry}
+\geometry{margin=2.4cm}
+
+% XeLaTeX 中文支持
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{Times New Roman}
+
+% 下面字体请按你电脑实际情况选一个能用的：
+% Windows 常见：SimSun / Microsoft YaHei / SimHei
+% Mac 常见：Songti SC / PingFang SC / STSong
+\setCJKmainfont{SimSun}
+
+% 段落与排版
+\usepackage{setspace}
+\setstretch{1.25}
+\usepackage{indentfirst}
+\setlength{\parindent}{2em}
+
+% ================= 常用宏包 =================
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{amsmath, amssymb}
+\usepackage{booktabs}
+\usepackage{subcaption}
+\usepackage{enumitem}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{url}
+
+% 超链接（尽量靠后）
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=black,
+  citecolor=black
+}
+
+% 页眉页脚（可选，显得“像报告”）
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{计算机图形学大作业技术报告}
+\rhead{Portal 三维解谜游戏}
+\cfoot{\thepage}
+
+% ================= 代码高亮 =================
+\usepackage{listings}
+\usepackage{xcolor}
+
+\definecolor{backcolour}{rgb}{0.97,0.97,0.96}
+\definecolor{codegray}{rgb}{0.45,0.45,0.45}
+\definecolor{codegreen}{rgb}{0,0.5,0}
+\definecolor{codepurple}{rgb}{0.55,0,0.8}
+
+% listings 对中文不友好：建议代码里尽量英文注释；正文里用中文解释
+\lstset{
+  language=C++,
+  backgroundcolor=\color{backcolour},
+  basicstyle=\ttfamily\footnotesize,
+  numbers=left,
+  numberstyle=\tiny\color{codegray},
+  stepnumber=1,
+  numbersep=6pt,
+  frame=single,
+  rulecolor=\color{codegray},
+  breaklines=true,
+  breakatwhitespace=false,
+  tabsize=4,
+  showstringspaces=false,
+  commentstyle=\color{codegreen},
+  keywordstyle=\color{blue},
+  stringstyle=\color{codepurple},
+  columns=fullflexible
+}
+
+% ================= 标题信息 =================
+\title{\textbf{基于自研 OpenGL 引擎的 Portal 类三维解谜游戏系统}\\
+\large 计算机图形学课程大作业技术报告}
+\author{徐易天，曾翔}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+\newpage
+
+\tableofcontents
+\newpage
+
+% ============================================================
+\section{引言与项目概述}
+
+本项目目标是实现一个可游玩的 Portal 风格三维解谜关卡：玩家在实验室场景中移动探索，拾取方块并放置于按钮触发机关，利用两扇相互连接的传送门穿越空间并最终到达终点。\par
+在图形学实现上，我们未使用 Unity/Unreal 等商业引擎，而是基于 OpenGL Core Profile + C++ 自行搭建渲染与交互框架，完成了模型加载、实时渲染、第一人称漫游、碰撞检测、触发器逻辑、传送门视窗渲染与传送等核心能力。\par
+（本报告结构与表述参考了我们提交的初稿文档，并在此基础上补全实现细节与代码证据。）
+
+\subsection{玩法流程与操作说明}
+
+\begin{itemize}[leftmargin=2em]
+  \item 移动：W/A/S/D；跳跃：Space；视角：鼠标移动；
+  \item 拾取/放下方块：E（对准可拾取方块后按 E 进入抓取；再次按 E 放下）；
+  \item 发射传送门：鼠标左键/右键分别放置 Portal A / Portal B；
+  \item 抓取状态下左键：对抓取物体施加向前推力并释放（用于抛掷/推动方块）；
+  \item 重置：T（将玩家位置重置到原点并清零速度，用于快速回到可测试状态）。
+  \item 截图：P
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{交互键位} & \textbf{行为说明} \\
+\midrule
+W/A/S/D & 第一人称移动（带加速度/重力） \\
+Space & 起跳（落地判定后允许） \\
+E & 重力枪拾取/放下（弹簧阻尼跟随） \\ 
+LMB/RMB & 放置 Portal A / Portal B；抓取状态下 LMB 会推开并释放方块 \\ 
+T & 将玩家位置重置到原点并清零速度 \\
+P & 截图，保存至/screenshots\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{对照课程要求的完成情况}
+
+课程要求包含 OBJ 模型导入、光照材质、几何变换、漫游、动画/多帧绘制、以及可选扩展如实时碰撞与可玩游戏等。
+本项目以“可玩 Portal 解谜游戏”作为综合实现载体，涵盖必做项并实现扩展项（实时碰撞、触发机关、传送门视窗渲染等）。
+
+% ============================================================
+\section{系统总体架构}
+
+系统采用模块化、面向对象设计，将输入、逻辑、物理、渲染解耦，主循环按“输入 $\rightarrow$ 更新 $\rightarrow$ 物理/触发 $\rightarrow$ 渲染”的顺序驱动。
+
+\subsection{核心模块划分}
+
+\begin{enumerate}[leftmargin=2em]
+  \item \textbf{Application}：窗口与 OpenGL 上下文创建，主循环（deltaTime 计算、调用 update/render）。
+  \item \textbf{Scene / GameObject}：场景管理与对象容器，统一管理模型资源、对象实例、Portal、Trigger、光源等。
+  \item \textbf{Renderer}：封装 Shader、FBO、Portal 多次渲染、材质绑定与绘制流程。
+  \item \textbf{Model/Mesh/Texture}：OBJ/MTL 解析、顶点数据组织、纹理加载与缓存。
+  \item \textbf{PhysicsSystem}：刚体、重力、碰撞检测（SAT OBB）、raycast、触发器检测。
+  \item \textbf{Player / PortalGun / Button / Flip / Trigger}：玩家控制、抓取系统、按钮触发器与翻转机关（Flip）、终点判定等玩法对象。
+\end{enumerate}
+
+\subsection{运行主循环结构}
+
+主循环体现实时交互程序的经典结构：计算帧间隔 dt，处理输入、更新逻辑、渲染一帧并交换缓冲。
+
+\begin{lstlisting}[caption={src/Application.cpp：主循环骨架（节选，和最终版本一致）}]
+while (!glfwWindowShouldClose(window)) {
+    float currentFrame = (float)glfwGetTime();
+    deltaTime = currentFrame - lastFrame;
+    lastFrame = currentFrame;
+
+    // Clamp dt to avoid physics explosions
+    if (deltaTime > 0.1f) deltaTime = 0.1f;
+
+    // 1) input
+    input.update();
+    processInput(deltaTime);
+
+    // 2) update
+    Camera &activeCamera = getActiveCamera();
+    scene->update(deltaTime, activeCamera);
+
+    // 3) render
+    renderer->render(*scene, activeCamera);
+
+    glfwSwapBuffers(window);
+    glfwPollEvents();
+}
+\end{lstlisting}
+
+
+% ============================================================
+\section{资源管线：Blender 建模、OBJ/MTL 解析与场景构建}
+
+\subsection{建模与资源组织}
+
+所有场景与道具模型由 Blender 自行建模导出 OBJ（含法线/UV），材质信息通过 MTL 关联，纹理以图片文件形式存储并在加载阶段建立缓存。
+
+本项目资源目录结构如下（与工程一致）：
+\begin{itemize}[leftmargin=2em]
+  \item \texttt{resources/obj/level/}：关卡墙体、按钮（button\_flip / button\_goal）、可移动方块（movable）等
+  \item \texttt{resources/obj/portal\_gun/}：Portal Gun 模型
+  \item \texttt{resources/obj/portal\_cube/}：可拾取方块模型
+  \item \texttt{resources/texture/}：贴图
+  \item \texttt{resources/shader/}：顶点/片元着色器
+\end{itemize}
+
+\subsection{OBJ 解析：顶点/法线/UV 与面索引三角化}
+
+我们没有使用第三方 OBJ 库，而在 \texttt{Model} 中实现了基础解析：读取 v/vn/vt 与 f。对 f（多边形面）采用扇形三角化（Fan Triangulation）转为三角形列表，并建立“唯一顶点”索引缓存以复用数据。
+
+\begin{lstlisting}[caption={src/Model.cpp：读取 f 并进行三角化（节选）}]
+else if (prefix == "f") {
+    // parse all vertices in this face
+    std::vector<unsigned int> faceIndices;
+    std::string vStr;
+    while (ss >> vStr) {
+        // parse "v/vt/vn"
+        unsigned int vIdx=0, vtIdx=0, vnIdx=0;
+        // ... split by '/'
+        // push unique vertex index
+        faceIndices.push_back(getOrCreateUniqueIndex(vIdx, vtIdx, vnIdx));
+    }
+
+    // fan triangulation: (0,i,i+1)
+    for (size_t i = 1; i + 1 < faceIndices.size(); ++i) {
+        indices.push_back(faceIndices[0]);
+        indices.push_back(faceIndices[i]);
+        indices.push_back(faceIndices[i+1]);
+    }
+}
+\end{lstlisting}
+
+\subsection{模型包围盒与 OBB 构建}
+
+为了服务碰撞检测与触发器，模型加载后计算 AABB（min/max bound），并在对象层根据缩放/旋转构建 OBB（有向包围盒）。这样可以更准确地区分不同形状物体的碰撞范围。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/obb_debug.png}
+    
+    \caption{图中线框为场景中的触发器（Trigger）感应范围。Trigger 系统底层复用了物理引擎的 OBB（有向包围盒） 数据结构与求交算法，此处通过可视化 Debug 视图验证了 OBB 空间计算的正确性。}
+    \label{fig:obb_debug}
+\end{figure}
+
+\subsection{物理穿梭与碰撞剔除 (Collision Culling)}
+
+除了视觉上的连通，Portal 机制还要求在物理上允许玩家“穿过”原本存在的墙壁。若不处理碰撞，玩家会被传送门背后的墙体阻挡。为此，我们结合 Trigger 系统 与 位掩码 (Bitmask) 技术实现了动态碰撞剔除。
+
+\subsubsection{基于掩码的碰撞过滤}
+我们在 \texttt{PhysicsSystem} 中引入了碰撞掩码机制。仅当两个物体的掩码进行按位与运算结果非零时（$(Mask_A \ \& \ Mask_B) \neq 0$），才进行碰撞解算。
+
+\begin{lstlisting}[caption={src/PhysicsSystem.cpp：基于掩码的碰撞过滤}]
+// 物理引擎中的碰撞预判
+if ((a.rigidBody->collisionMask & b.rigidBody->collisionMask) == 0) 
+    continue; // 掩码不匹配，忽略碰撞（允许穿透）
+\end{lstlisting}
+
+\subsubsection{动态掩码切换逻辑}
+当传送门生成时，会将附着的墙壁标记为 \texttt{PORTAL\_ON}。同时，我们在传送门前方设置了一个 \texttt{NearTrigger}。当玩家或物体进入该区域时，触发器回调函数会将其碰撞掩码修改为 \texttt{NEAR\_PORTAL}，使其与墙壁的掩码运算结果为 0，从而实现“穿墙”。
+
+\begin{lstlisting}[caption={src/Portal.cpp：利用 Trigger 动态修改碰撞掩码}]
+// Portal 初始化时设置近距离触发器
+nearTrigger->onEnter = [](GameObject *obj) {
+    // 进入传送门附近，修改掩码，允许穿过宿主墙壁
+    obj->setCollisionMask(COLLISION_MASK_NEARPORTAL);
+};
+
+nearTrigger->onExit = [](GameObject *obj) {
+    // 离开传送门区域，恢复默认碰撞掩码
+    obj->setCollisionMask(COLLISION_MASK_DEFAULT);
+};
+\end{lstlisting}
+
+通过这种机制，我们确保了玩家仅在传送门开启且靠近时才能穿过墙壁，而在其他情况下依然受物理碰撞限制，完美解决了“
+% ============================================================
+\section{渲染系统设计与实现细节}
+
+\subsection{基础渲染管线}
+
+渲染模块负责：
+\begin{itemize}[leftmargin=2em]
+  \item Shader 管理：统一编译/链接、设置 uniform（模型矩阵、视图矩阵、投影矩阵、光源参数）。
+  \item 深度测试、面剔除、混合：保证室内场景遮挡关系正确；必要物体支持透明混合。
+  \item 纹理绑定与材质：从 MTL/Texture 管线读取 diffuse/specular 等贴图并绑定。
+\end{itemize}
+
+\vspace{0.5cm} % 空一点距离
+\textbf{渲染管线逻辑流程：}
+
+为了实现传送门的“画中画”效果，我们的渲染管线并非简单的单次绘制，而是采用了多遍渲染 (Multi-pass Rendering) 架构。具体流程如下：
+
+\begin{enumerate}
+    \item \textbf{预处理阶段 (Portal Pass)}：
+    \begin{itemize}
+        \item 遍历场景中的传送门，判断是否需要递归渲染。
+        \item 计算 \textit{虚拟摄像机} 矩阵：将主摄像机相对于“入口门”的位姿变换到“出口门”空间。
+        \item \textbf{离屏渲染}：绑定 FBO (Frame Buffer Object)，将虚拟视角的场景渲染到纹理。在此过程中启用 \textit{斜投影裁剪} 以防止物体遮挡。
+    \end{itemize}
+    
+    \item \textbf{主渲染阶段 (Main Pass)}：
+    \begin{itemize}
+        \item 切换回默认帧缓冲 (Default Framebuffer)。
+        \item 绘制主视角的实验室场景（墙壁、方块等）。
+        \item 绘制传送门网格：此时将预处理阶段生成的 FBO 纹理作为材质绑定到传送门表面，从而实现空间连通的视觉效果。
+    \end{itemize}
+\end{enumerate}
+
+\subsection{帧缓冲（FBO）封装}
+
+Portal 视窗渲染依赖离屏渲染到纹理。我们封装了 \texttt{FrameBuffer}：创建 FBO、颜色纹理附件、深度模板 RBO，并提供 Bind/Unbind/Rescale 接口。
+
+\begin{lstlisting}[caption={src/FrameBuffer.cpp：FBO 初始化（节选）}]
+glGenFramebuffers(1, &fbo);
+glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+// color texture
+glGenTextures(1, &textureColorBuffer);
+glBindTexture(GL_TEXTURE_2D, textureColorBuffer);
+glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0,
+             GL_RGB, GL_UNSIGNED_BYTE, NULL);
+glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                       GL_TEXTURE_2D, textureColorBuffer, 0);
+
+// depth-stencil renderbuffer
+glGenRenderbuffers(1, &rbo);
+glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
+glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
+                          GL_RENDERBUFFER, rbo);
+\end{lstlisting}
+
+\subsection{Portal 视窗渲染：虚拟摄像机与视图矩阵变换}
+
+Portal 的“看见另一扇门后的世界”，本质是把主相机通过入口门坐标系映射到出口门坐标系，得到一台虚拟相机，从该虚拟相机渲染场景到纹理，再把纹理贴到入口门表面。\par
+我们在 \texttt{Portal::getTransformedView} 中实现了该变换（包含 180 度翻转以保证朝向一致）。
+
+\begin{lstlisting}[caption={src/Portal.cpp：计算 Portal 变换后的视图矩阵（原代码节选）}]
+glm::mat4 Portal::getTransformedView(glm::mat4 view) {
+    glm::mat4 camTransform = glm::inverse(view);
+
+    glm::mat4 rotation180 = glm::rotate(glm::mat4(1.0f),
+        glm::radians(180.0f), glm::vec3(0, 1, 0));
+
+    glm::mat4 destView = otherModel * rotation180
+        * glm::inverse(myModel) * camTransform;
+
+    return glm::inverse(destView);
+}
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/portal_view.png}
+    \caption{透过Portal A观察到的画面，实际上是基于虚拟摄像机在出口门Portal B位置渲染的结果。矩阵变换保证了视线穿过门后的几何连续性。}
+    \label{fig:portal_view}
+\end{figure}
+
+\subsection{斜投影裁剪（Oblique Projection Clipping）}
+
+如果仅用普通投影矩阵渲染 Portal 纹理，会出现“门后墙体遮挡/穿帮”等问题。为此我们根据门平面构造裁剪平面，并对投影矩阵近裁剪面做斜投影修改，使得虚拟相机只渲染门平面另一侧的内容。\par
+该部分在 \texttt{Renderer} 中实现，核心是构造 $q$ 与 $c$ 并替换投影矩阵的第三列。
+
+\begin{lstlisting}[caption={src/Renderer.cpp：斜投影裁剪矩阵修改（原代码节选）}]
+glm::vec4 viewPlane = srcPortal.getPlaneEquation(destView);
+
+glm::vec4 q = glm::inverse(obliqueProjection) * glm::vec4(
+    (viewPlane.x > 0 ? 1 : -1),
+    (viewPlane.y > 0 ? 1 : -1),
+    1.0f, 1.0f);
+
+glm::vec4 c = viewPlane * (2.0f / glm::dot(viewPlane, q));
+
+obliqueProjection[0][2] = c.x - obliqueProjection[0][3];
+obliqueProjection[1][2] = c.y - obliqueProjection[1][3];
+obliqueProjection[2][2] = c.z - obliqueProjection[2][3];
+obliqueProjection[3][2] = c.w - obliqueProjection[3][3];
+\end{lstlisting}
+
+\subsection{递归渲染：Portal 中的 Portal}
+
+Portal 互相可见时会产生“镜廊/画中画”效果。本项目支持递归渲染，但出于性能考虑设定最大深度，例如 \texttt{MAX\_PORTAL\_RECURSION=3}，防止无限递归导致帧率崩溃。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/portal_recursion.png}
+    
+    \caption{展示了当两扇传送门互为可见时产生的“无限镜廊”视觉效果。渲染管线通过递归调用 \texttt{renderPortal} 函数，实现了深度为 3 的嵌套视图绘制 (MAX\_PORTAL\_RECURSION = 3)，有效验证了离屏渲染逻辑的完备性。}
+    \label{fig:portal_recursion}
+\end{figure}
+
+% ============================================================
+\section{物理系统与碰撞检测（SAT + OBB）}
+
+\subsection{刚体与力学更新}
+
+游戏中玩家与方块具有重力、速度与受力（抓取时的弹簧力、投掷时的推力等）。物理更新阶段对速度/位移积分，并在碰撞发生时做位置修正与速度处理。
+
+\subsection{OBB 表示与分离轴定理（SAT）}
+
+为支持旋转物体（例如被抓取的方块可能发生旋转），仅使用 AABB 难以提供稳定精确的碰撞结果。因此我们实现 OBB + SAT：\par
+对两个 OBB，测试 15 个潜在分离轴（A 的 3 个轴、B 的 3 个轴、以及 9 个叉乘轴）。若存在任意轴使投影区间不重叠，则不碰撞；否则碰撞并取最小穿透深度作为修正方向。
+
+\begin{lstlisting}[caption={src/PhysicsSystem.cpp：SAT 单轴测试（原代码节选）}]
+static bool TestAxis(const glm::vec3 &axis,
+                     const OBB &a, const OBB &b,
+                     float &minPen, glm::vec3 &bestAxis) {
+    float len2 = glm::dot(axis, axis);
+    if (len2 < 1e-6f) return true; // ignore near-zero axis
+    glm::vec3 n = axis / std::sqrt(len2);
+
+    float aMin, aMax, bMin, bMax;
+    ProjectOBB(n, a, aMin, aMax);
+    ProjectOBB(n, b, bMin, bMax);
+
+    float overlap = std::min(aMax, bMax) - std::max(aMin, bMin);
+    if (overlap < 0.0f) return false;
+
+    if (overlap < minPen) {
+        minPen = overlap;
+        bestAxis = n;
+    }
+    return true;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[caption={src/PhysicsSystem.cpp：SAT 15 轴检测（原代码节选）}]
+bool PhysicsSystem::checkCollisionSAT(const OBB &a, const OBB &b,
+                                      glm::vec3 &correction) {
+    float minPen = 1e9f;
+    glm::vec3 bestAxis(0.0f);
+
+    // 1) A's local axes
+    for (int i = 0; i < 3; i++)
+        if (!TestAxis(a.axes[i], a, b, minPen, bestAxis)) return false;
+
+    // 2) B's local axes
+    for (int i = 0; i < 3; i++)
+        if (!TestAxis(b.axes[i], a, b, minPen, bestAxis)) return false;
+
+    // 3) 9 cross product axes
+    for (int i = 0; i < 3; i++)
+        for (int j = 0; j < 3; j++) {
+            glm::vec3 axis = glm::cross(a.axes[i], b.axes[j]);
+            if (!TestAxis(axis, a, b, minPen, bestAxis)) return false;
+        }
+
+    // correction points from A to B
+    glm::vec3 d = b.center - a.center;
+    if (glm::dot(d, bestAxis) < 0) bestAxis = -bestAxis;
+
+    correction = -bestAxis * minPen;
+    return true;
+}
+\end{lstlisting}
+
+\subsection{Raycast：用于抓取、开门、Portal 放置}
+
+射线检测贯穿多个玩法：
+\begin{itemize}[leftmargin=2em]
+  \item E 拾取：从相机位置沿前向发射射线，命中可抓取物体后进入抓取状态；
+  \item F 开门：射线命中 Door 则执行 toggle；
+  \item 鼠标放置 Portal：射线命中可放置墙面，计算门的位姿并生成/更新门。
+\end{itemize}
+
+% ============================================================
+\section{Portal 传送：位置/速度/相机姿态的一致性}
+
+Portal “传送”不仅是把位置挪到另一端，还需要处理：
+\begin{itemize}[leftmargin=2em]
+  \item 位置：入口局部坐标 $\rightarrow$ 180° 翻转 $\rightarrow$ 出口世界坐标；
+  \item 速度：同样作为方向向量进行变换，保证动量方向正确；
+  \item 相机：玩家视角 Front/Up/Right 同步变换，并处理 Roll 恢复，避免“歪脖子永久倾斜”。
+\end{itemize}
+
+\begin{lstlisting}[caption={src/Portal.cpp：传送位置与速度变换（原代码节选）}]
+glm::vec4 relPos = glm::inverse(srcRot)
+    * glm::vec4(obj->position - this->position, 1.0f);
+
+glm::vec4 newWorldPos4 = glm::vec4(linkedPortal->position, 1.0f)
+    + dstRot * (rot180 * relPos);
+
+// push forward to avoid immediate re-trigger
+glm::vec3 dstForward = glm::normalize(glm::vec3(
+    dstRot * glm::vec4(0,0,1,0)));
+obj->position = glm::vec3(newWorldPos4) + dstForward * 0.15f;
+
+if (obj->rigidBody) {
+    glm::vec4 relVel = glm::inverse(srcRot)
+        * glm::vec4(obj->rigidBody->velocity, 0.0f);
+    glm::vec4 newVel4 = dstRot * (rot180 * relVel);
+    obj->rigidBody->velocity = glm::vec3(newVel4);
+}
+\end{lstlisting}
+
+\begin{lstlisting}[caption={src/Portal.cpp：玩家相机朝向变换与 Roll 恢复（原代码节选）}]
+glm::vec4 relFront = glm::inverse(srcRot)
+    * glm::vec4(player->camera.Front, 0.0f);
+glm::vec4 newFront4 = dstRot * (rot180 * relFront);
+glm::vec3 newFront = glm::normalize(glm::vec3(newFront4));
+player->camera.Front = newFront;
+
+// recompute yaw/pitch
+float pitch = glm::degrees(glm::asin(glm::clamp(newFront.y, -1.0f, 1.0f)));
+float yaw   = glm::degrees(std::atan2(newFront.z, newFront.x));
+player->camera.Yaw = yaw;
+player->camera.Pitch = pitch;
+
+// roll recovery timer
+player->initialRoll = roll;
+player->rollRecoveryDuration = abs(roll) / 180.0f * 0.6f + 0.2f;
+player->rollRecoveryTimer = player->rollRecoveryDuration;
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    % 左图：扔进去前
+    \begin{subfigure}[b]{0.45\textwidth}
+        \centering
+        % 截一张方块正要掉进地板传送门的图
+         \includegraphics[width=\textwidth]{figures/momentum_entry.png} 
+        \caption{入口：物体具有向下的垂直速度}
+    \end{subfigure}
+    \hfill
+    % 右图：飞出来后
+    \begin{subfigure}[b]{0.45\textwidth}
+        \centering
+        % 截一张方块从墙面传送门飞出、有抛物线轨迹的图
+         \includegraphics[width=\textwidth]{figures/momentum_exit.png}
+
+        \caption{出口：速度向量被正确变换为水平向前}
+    \end{subfigure}
+    
+    \caption{动量守恒验证：通过“抛射 (Fling)”实验证明，当物体穿过传送门时，其速度向量经过矩阵变换后，大小保持不变，方向相对于出口平面正确重定向。}
+    \label{fig:momentum}
+\end{figure}
+
+% ============================================================
+\section{交互系统：抓取、按钮、Flip 机关与终点}
+
+\subsection{重力枪抓取（弹簧阻尼跟随）}
+
+拾取不是简单把方块“绑死在相机前”，而是用弹簧阻尼力让物体平滑跟随且保留惯性，提升手感与真实感。
+
+\begin{lstlisting}[caption={src/Player.cpp：E 拾取/放下（原代码节选）}]
+if (input.isKeyPressed(GLFW_KEY_E)) {
+    if (isGrabbing) {
+        isGrabbing = false;
+    } else {
+        auto result = scene->physicsSystem->raycast(camera.Position,
+                        camera.Front, 5.0f);
+        if (result.hit && result.object && result.object->isTeleportable) {
+            isGrabbing = true;
+            grabbedObject = result.object;
+        }
+    }
+}
+\end{lstlisting}
+
+\begin{lstlisting}[caption={src/Player.cpp：弹簧阻尼施力（原代码节选）}]
+if (isGrabbing && grabbedObject) {
+    glm::vec3 targetPos = position + camera.Front * 2.0f
+        + glm::vec3(0.0f, height * 0.5f, 0.0f);
+
+    if (glm::length(targetPos - grabbedObject->position) > 3.0f) {
+        isGrabbing = false;
+    } else {
+        glm::vec3 springForce = (targetPos - grabbedObject->position) * 30.0f;
+        glm::vec3 dampingForce = -grabbedObject->rigidBody->velocity * 5.0f;
+        grabbedObject->rigidBody->addForce(springForce + dampingForce);
+    }
+}
+\end{lstlisting}
+
+\subsection{按钮与 Flip：Trigger 驱动的机关联动}
+
+按钮（Button）为自身生成 Trigger 区域用于检测“有人/物压住”。Scene 在每帧更新中读取 Button 的按下/抬起沿边（getIsPressed / getIsReleased），进而驱动 Flip 机关翻转或复位；同时考虑了 Flip 旋转期间 Portal 贴附失效的处理，避免穿模与视角错误。
+
+\begin{lstlisting}[caption={src/Button.cpp：为按钮生成 Trigger（节选）}]
+std::unique_ptr<Trigger> Button::createTrigger() {
+    glm::vec3 min = model->minBound * scale;
+    glm::vec3 max = model->maxBound * scale;
+
+    glm::vec3 center = initialPosition + (min + max) * 0.5f;
+    glm::vec3 size = max - min;
+
+    glm::vec3 triggerMin = center - size * 0.5f + glm::vec3(-0.2f, 0.0f, -0.2f);
+    glm::vec3 triggerMax = center + size * 0.5f + glm::vec3(0.2f, 0.5f, 0.2f);
+
+    return std::make_unique<Trigger>(triggerMin, triggerMax);
+}
+\end{lstlisting}
+
+\begin{lstlisting}[caption={src/Scene.h：按钮驱动 Flip 与 Portal 失效处理（节选）}]
+auto button_flip = objects.find("button_flip");
+if (button_flip != objects.end()) {
+    Button *btn = dynamic_cast<Button *>(button_flip->second.get());
+    if (btn && btn->getIsPressed()) {
+        auto flipWall = objects.find("flip_wall");
+        if (flipWall != objects.end()) {
+            Flip *flip = dynamic_cast<Flip *>(flipWall->second.get());
+            if (flip) flip->flip();
+        }
+    } else if (btn && btn->getIsReleased()) {
+        auto flipWall = objects.find("flip_wall");
+        if (flipWall != objects.end()) {
+            Flip *flip = dynamic_cast<Flip *>(flipWall->second.get());
+            if (flip) flip->reset();
+        }
+    }
+}
+\end{lstlisting}
+
+\subsection{终点判定与通关重置}
+
+终点同样通过按钮（Button + Trigger）实现：Application 在主循环中检测终点按钮（button\_goal）的按下沿，一旦被触发则调用 \texttt{glfwSetWindowTitle(window, "You Win!")} 给出胜利反馈。
+
+\begin{figure}[H]
+    \centering
+    % 左图：到达终点（游戏内画面）
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/goal_reach.png} 
+        \caption{终点平台}
+        \label{fig:goal_visual}
+    \end{subfigure}
+    \hfill
+    % 右图：标题栏反馈（UI 逻辑）
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        % 你的标题栏截图，建议截成长条形
+        \includegraphics[width=\textwidth]{figures/win_titlebar.png}
+        \caption{窗口标题栏显示通关状态（You Win!）}
+        \label{fig:win_title}
+    \end{subfigure}
+    
+    \caption{当玩家进入终点区域触发 Trigger 后，后端逻辑不仅在控制台输出日志，还通过 \texttt{glfwSetWindowTitle} 实时更新窗口标题，向玩家提供直观的胜利反馈。}
+    \label{fig:game_win}
+\end{figure}
+
+% ============================================================
+\section{关键工程问题与调试经验}
+
+\subsection{OBJ 资源丢失与路径问题}
+
+开发中常见问题：运行时报 \texttt{Failed to open OBJ file: ...}，根因通常为工作目录与资源相对路径不一致。解决方式：
+\begin{itemize}[leftmargin=2em]
+  \item 统一可执行程序运行目录（例如把工作目录设为项目根）；
+  \item 或改为从配置文件读取资源根路径；
+  \item 或使用 CMake 在构建时复制 resources 到输出目录。
+\end{itemize}
+
+\subsection{Portal 递归与性能权衡}
+
+递归层数越深，FBO 渲染次数越多，GPU 开销成倍增加。我们通过限制最大递归深度并在门不可见/距离过远时跳过 Portal 渲染来平衡画面与帧率。
+\subsection{传送后立即反复触发（“抖门/死循环”）}
+
+典型现象：物体穿门后立刻又被入口触发器检测到，来回传送造成死循环。我们采用“前向推开”策略：传送到出口后沿门法线方向推离一小段距离（见前文 \texttt{teleportForwardPush}），并结合 nearTrigger/碰撞 mask 做短暂保护窗口，避免反复触发。
+
+% ============================================================
+\section{实验结果与展示}
+
+为了直观展示本项目的核心功能与渲染效果，我们在实际运行中截取了以下关键场景，涵盖了从基础场景渲染、Portal 核心机制到物理交互与游戏通关的完整流程。
+
+\begin{figure}[H]
+    \centering
+    % 第一行：场景与视窗
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/scene_overview.png}
+        \caption{实验室场景全景渲染（Blender 建模导入）}
+        \label{fig:overview}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/portal_view.png}
+        \caption{Portal 视窗效果：A 门表面实时显示 B 门视角}
+        \label{fig:portal_view}
+    \end{subfigure}
+    
+    \vspace{0.5cm} % 行间距
+    
+    % 第二行：递归与抓取
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/portal_recursion.png}
+        \caption{递归渲染：当双门互视时产生的“画中画”效果}
+        \label{fig:recursion}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/cube_grab.png}
+        \caption{物理交互：使用重力枪吸附并携带方块移动}
+        \label{fig:grab}
+    \end{subfigure}
+    
+    \vspace{0.5cm} % 行间距
+
+    % 第三行：机关与通关
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/puzzle_solve.png}
+        \caption{逻辑解谜：方块压下按钮，触发 Flip 机关翻转打开通道}
+        \label{fig:puzzle}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/win_titlebar.png}
+        \caption{通关判定：到达终点区域后触发胜利逻辑}
+        \label{fig:win}
+    \end{subfigure}
+    
+    \caption{Portal 游戏系统核心功能综合演示}
+    \label{fig:showcase}
+\end{figure}
+% ============================================================
+\section{小组分工与协作方式}
+
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}p{3.2cm}p{10.5cm}@{}}
+\toprule
+\textbf{成员} & \textbf{主要贡献} \\
+\midrule
+徐易天 & 憋憋 \\
+曾翔 &  憋憋\\
+
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ============================================================
+\section{总结与展望}
+
+通过本次大作业，我们完整实现了一个可玩的 Portal 类三维解谜关卡，覆盖从资源管线、实时渲染到物理交互与高级 Portal 技术的完整链路，达成课程要求并具备扩展性。
+未来改进方向：
+\begin{itemize}[leftmargin=2em]
+  \item 更完善的光照与阴影（Shadow Mapping / SSAO），提升真实感；
+  \item 使用 BVH/空间划分优化碰撞与 raycast 性能；
+  \item 更丰富的机关组合与关卡编辑能力；
+  \item Portal 放置限制与更完善的剪裁/模板缓冲方案对比实现。
+\end{itemize}
+
+% ============================================================
+\appendix
+\newpage
+\section{附录：源代码清单}
+
+\textbf{说明：}本附录通过 \texttt{\textbackslash lstinputlisting} 直接嵌入工程源代码，此处只展示关键代码，具体代码于src文件夹中。
+
+\subsection{Application / 主循环}
+\lstinputlisting[caption={src/Application.cpp}]{src/Application.cpp}
+\lstinputlisting[caption={src/Application.h}]{src/Application.h}
+%\lstinputlisting[caption={src/main.cpp}]{src/main.cpp}
+
+\subsection{渲染与帧缓冲}
+\lstinputlisting[caption={src/Renderer.cpp}]{src/Renderer.cpp}
+\lstinputlisting[caption={src/Renderer.h}]{src/Renderer.h}
+%\lstinputlisting[caption={src/FrameBuffer.cpp}]{src/FrameBuffer.cpp}
+%\lstinputlisting[caption={src/FrameBuffer.h}]{src/FrameBuffer.h}
+%\lstinputlisting[caption={src/Shader.cpp}]{src/Shader.cpp}
+%\lstinputlisting[caption={src/Shader.h}]{src/Shader.h}
+%\lstinputlisting[caption={src/Skybox.cpp}]{src/Skybox.cpp}
+%\lstinputlisting[caption={src/Skybox.h}]{src/Skybox.h}
+
+\subsection{Portal 系统}
+\lstinputlisting[caption={src/Portal.cpp}]{src/Portal.cpp}
+%\lstinputlisting[caption={src/Portal.h}]{src/Portal.h}
+%\lstinputlisting[caption={src/PortalGun.h}]{src/PortalGun.h}
+
+\subsection{物理与触发器}
+\lstinputlisting[caption={src/PhysicsSystem.cpp}]{src/PhysicsSystem.cpp}
+%\lstinputlisting[caption={src/PhysicsSystem.h}]{src/PhysicsSystem.h}
+\lstinputlisting[caption={src/Trigger.cpp}]{src/Trigger.cpp}
+\lstinputlisting[caption={src/Trigger.h}]{src/Trigger.h}
+
+\subsection{玩家与交互}
+\lstinputlisting[caption={src/Player.cpp}]{src/Player.cpp}
+%\lstinputlisting[caption={src/Player.h}]{src/Player.h}
+% 旧版本的 Door / GameMechanics 已在最终工程中移除或重构
+%\lstinputlisting[caption={src/door.cpp}]{src/door.cpp}
+%\lstinputlisting[caption={src/GameMechanics.h}]{src/GameMechanics.h}
+
+\lstinputlisting[caption={src/Scene.h}]{src/Scene.h}
+\lstinputlisting[caption={src/Button.cpp}]{src/Button.cpp}
+\lstinputlisting[caption={src/Flip.cpp}]{src/Flip.cpp}
+%\lstinputlisting[caption={src/InputManager.cpp}]{src/InputManager.cpp}
+%\lstinputlisting[caption={src/InputManager.h}]{src/InputManager.h}
+
+\subsection{模型与网格}
+\lstinputlisting[caption={src/Model.cpp}]{src/Model.cpp}
+%\lstinputlisting[caption={src/Model.h}]{src/Model.h}
+%\lstinputlisting[caption={src/Mesh.cpp}]{src/Mesh.cpp}
+%\lstinputlisting[caption={src/Mesh.h}]{src/Mesh.h}
+%\lstinputlisting[caption={src/Texture.cpp}]{src/Texture.cpp}
+%\lstinputlisting[caption={src/Texture.h}]{src/Texture.h}
+
+\subsection{相机与对象基类}
+\lstinputlisting[caption={src/Camera.cpp}]{src/Camera.cpp}
+%\lstinputlisting[caption={src/Camera.h}]{src/Camera.h}
+\lstinputlisting[caption={src/GameObject.cpp}]{src/GameObject.cpp}
+%\lstinputlisting[caption={src/GameObject.h}]{src/GameObject.h}
+%\lstinputlisting[caption={src/Scene.h}]{src/Scene.h}
+%\lstinputlisting[caption={src/HUD.cpp}]{src/HUD.cpp}
+%\lstinputlisting[caption={src/HUD.h}]{src/HUD.h}
+
+\end{document}
